@@ -5,4 +5,4 @@ Disallow: /admin
 Disallow: /profile
 Disallow: /documents
 
-Sitemap: https://campusmind.ai/sitemap.xml
+Sitemap: https://campus-mind-ai-delta.vercel.app/sitemap.xml

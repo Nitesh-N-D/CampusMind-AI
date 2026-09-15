@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://campusmind.ai/</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://campusmind.ai/register-college</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/register-college</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://campusmind.ai/register</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/register</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://campusmind.ai/login</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://campusmind.ai/privacy</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://campusmind.ai/terms</loc>
+    <loc>https://campus-mind-ai-delta.vercel.app/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

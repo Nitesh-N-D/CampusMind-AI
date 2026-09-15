@@ -1,0 +1,161 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* CampusMind AI design tokens - light academic palette.
+     Navy = institutional authority, paper = the document itself.
+     Teal/amber/coral are reserved strictly for trust-tier meaning. */
+
+  --color-ink-950: #0d1526;
+  --color-ink-900: #12172b;
+  --color-ink-800: #1c2338;
+  --color-ink-700: #2a3350;
+  --color-ink-500: #545f82;
+  --color-ink-400: #7b84a3;
+  --color-ink-300: #a6accc;
+
+  --color-navy-900: #14213d;
+  --color-navy-700: #1e2a4a;
+  --color-navy-600: #263562;
+  --color-navy-500: #33447f;
+
+  --color-paper-50: #fbfaf6;
+  --color-paper-100: #f6f4ee;
+  --color-paper-200: #ede9dd;
+  --color-paper-300: #ddd8c8;
+
+  --color-line: #ddd8cc;
+  --color-line-strong: #c7c1ae;
+
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f4ee;
+  --color-surface-hover: #ede9dd;
+
+  --color-violet-600: #4b4696;
+  --color-violet-500: #5b57d6;
+  --color-violet-100: #e9e8fb;
+  --color-violet-50: #f3f2fd;
+
+  --color-seal-teal-900: #0d3d2e;
+  --color-seal-teal-700: #14573f;
+  --color-seal-teal-600: #1f7a5c;
+  --color-seal-teal-100: #dcf0e6;
+  --color-seal-teal-50: #eef8f2;
+
+  --color-seal-amber-900: #5c3a0d;
+  --color-seal-amber-700: #855215;
+  --color-seal-amber-600: #c97d2e;
+  --color-seal-amber-100: #faecd7;
+  --color-seal-amber-50: #fdf6ea;
+
+  --color-seal-coral-900: #5c1712;
+  --color-seal-coral-700: #86241c;
+  --color-seal-coral-600: #c1443b;
+  --color-seal-coral-100: #f9dedb;
+  --color-seal-coral-50: #fcefed;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-card: 14px;
+  --radius-control: 8px;
+
+  --shadow-card: 0 1px 2px rgba(20, 33, 61, 0.04), 0 8px 24px rgba(20, 33, 61, 0.05);
+  --shadow-raised: 0 2px 8px rgba(20, 33, 61, 0.08), 0 16px 40px rgba(20, 33, 61, 0.08);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/*
+  Dark theme overrides. Because every color in this file is a real CSS
+  custom property (not a static Tailwind value), and every `bg-*`/`text-*`/
+  `border-*` utility Tailwind v4 generates from `@theme` compiles down to
+  `var(--color-x)`, overriding these variables here re-themes the entire
+  app - no per-component dark: variants needed. The navy sidebar in
+  AppShell intentionally stays a constant brand navy in both themes, the
+  same way most professional dashboards (Linear, Vercel, Notion) keep a
+  fixed-dark nav rail regardless of the content theme.
+*/
+[data-theme="dark"] {
+  --color-paper-50: #0b1120;
+  --color-paper-100: #0f1729;
+  --color-paper-200: #182238;
+  --color-paper-300: #232f4a;
+
+  --color-line: #232f4a;
+  --color-line-strong: #34406399;
+
+  --color-surface: #121a2e;
+  --color-surface-2: #172038;
+  --color-surface-hover: #1d2740;
+
+  --color-ink-950: #f6f4ee;
+  --color-ink-900: #ece9df;
+  --color-ink-800: #cfccc0;
+  --color-ink-700: #aeaba0;
+  --color-ink-500: #8b8ea8;
+  --color-ink-400: #6d7091;
+  --color-ink-300: #4c4f6b;
+
+  --color-seal-teal-50: #0d3d2e33;
+  --color-seal-amber-50: #5c3a0d33;
+  --color-seal-coral-50: #5c171233;
+  --color-violet-50: #4b469633;
+  --color-violet-100: #4b469655;
+
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-paper-100);
+  color: var(--color-ink-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-violet-100);
+  color: var(--color-navy-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-violet-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 999px;
+  border: 2px solid var(--color-paper-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

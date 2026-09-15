@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#F6F4EE"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#DDD8CC" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F6F4EE" stop-opacity="0"/>
+      <stop offset="1" stop-color="#F6F4EE" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#fade)"/>
+
+  <!-- Seal mark, large -->
+  <g transform="translate(900,300)">
+    <circle r="170" fill="#EEF8F2" stroke="#DDD8CC" stroke-width="1.5"/>
+    <circle r="170" fill="none" stroke="#1F7A5C" stroke-width="9" stroke-linecap="round"
+      stroke-dasharray="800 1068" transform="rotate(-90)"/>
+    <text x="0" y="22" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="64" fill="#0D3D2E" font-weight="600">94</text>
+  </g>
+
+  <!-- Wordmark + headline -->
+  <g transform="translate(90,150)">
+    <rect x="0" y="0" width="46" height="46" rx="10" fill="#14213D"/>
+    <circle cx="23" cy="23" r="16.5" stroke="#F6F4EE" stroke-width="1.6" opacity="0.9"/>
+    <path d="M23 12.5 L31 17.5 V28.5 L23 33.5 L15 28.5 V17.5 Z" stroke="#5B57D6" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+    <circle cx="23" cy="22.5" r="2.4" fill="#5B57D6"/>
+    <text x="62" y="32" font-family="Fraunces, serif" font-size="30" fill="#14213D" font-weight="600">CampusMind <tspan fill="#5B57D6">AI</tspan></text>
+  </g>
+
+  <text x="90" y="290" font-family="Fraunces, serif" font-size="52" fill="#0D1526" font-weight="600">Answers your college</text>
+  <text x="90" y="352" font-family="Fraunces, serif" font-size="52" fill="#0D1526" font-weight="600">can stand behind.</text>
+  <text x="90" y="410" font-family="IBM Plex Sans, sans-serif" font-size="22" fill="#545F82">Grounded RAG answers, page-level citations, and a visible trust score</text>
+  <text x="90" y="440" font-family="IBM Plex Sans, sans-serif" font-size="22" fill="#545F82">for every official college document.</text>
+</svg>

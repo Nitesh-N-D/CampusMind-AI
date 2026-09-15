@@ -1,0 +1,12 @@
+{
+  "name": "CampusMind AI",
+  "short_name": "CampusMind",
+  "description": "Grounded AI assistant for your college, backed by official documents.",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "theme_color": "#14213D",
+  "background_color": "#F6F4EE",
+  "display": "standalone",
+  "start_url": "/"
+}

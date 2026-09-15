@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /chat
+Disallow: /admin
+Disallow: /profile
+Disallow: /documents
+
+Sitemap: https://campusmind.ai/sitemap.xml

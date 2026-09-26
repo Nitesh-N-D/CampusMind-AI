@@ -49,3 +49,54 @@ def test_intentional_http_exceptions_pass_through_unchanged(client, college_and_
     assert resp.status_code == 400
     assert isinstance(resp.json()["detail"], str)
     assert len(resp.json()["detail"]) > 0
+
+
+def test_expired_or_forged_token_says_sign_in_again(client, student_token):
+    from datetime import timedelta
+    from app.core.security import create_access_token
+
+    expired = create_access_token({"sub": "1"}, expires_delta=timedelta(minutes=-1))
+    not_a_user_id = create_access_token({"sub": "abc"})
+    missing_user = create_access_token({"sub": "999999"})
+    for token in (expired, not_a_user_id, missing_user, student_token[:-4] + "xxxx"):
+        resp = client.get("/api/profile/me", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Your session has expired. Please sign in again."
+
+
+def test_wrong_password_message_is_plain_and_does_not_reveal_which_part(client, college_and_admin):
+    _, domain = college_and_admin
+    wrong_pw = client.post("/api/auth/login", json={"email": f"admin@{domain}", "password": "nope-nope"})
+    no_user = client.post("/api/auth/login", json={"email": f"ghost@{domain}", "password": "nope-nope"})
+    assert wrong_pw.status_code == no_user.status_code == 401
+    assert wrong_pw.json()["detail"] == no_user.json()["detail"] == (
+        "That email and password don't match. Check both and try again."
+    )
+
+
+def test_database_outage_is_a_clear_503_not_a_generic_500(client, student_token):
+    from sqlalchemy.exc import OperationalError
+    from app.db.database import get_db
+    from app.main import app
+
+    def _unreachable_db():
+        raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+        yield  # pragma: no cover
+
+    original = app.dependency_overrides[get_db]
+    app.dependency_overrides[get_db] = _unreachable_db
+    try:
+        resp = client.get("/api/profile/me", headers={"Authorization": f"Bearer {student_token}"})
+    finally:
+        app.dependency_overrides[get_db] = original
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["detail"] == "The database is temporarily unreachable. Please try again in a minute."
+    assert body["request_id"] == resp.headers["x-request-id"]
+    assert "connection refused" not in resp.text
+
+
+def test_forbidden_says_who_the_page_is_for(client, student_token):
+    resp = client.get("/api/admin/settings", headers={"Authorization": f"Bearer {student_token}"})
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Your account doesn't have access to this. It's only for admins."

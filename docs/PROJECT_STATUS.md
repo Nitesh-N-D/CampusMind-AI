@@ -116,8 +116,9 @@ backend/tests/               conftest.py (fixtures), test_auth.py,
                              test_ingestion_formats.py, test_login_events.py,
                              test_migrations.py, test_profile.py, test_rag.py,
                              test_retrieval_quality.py, test_roles.py,
-                             test_chat_export.py, test_user_export.py
-                             (124 tests)
+                             test_chat_export.py, test_user_export.py,
+                             test_ai_provider_errors.py
+                             (137 tests)
 backend/seed_data/           Demo documents in every supported format, all
                              labelled as fictional, plus
                              make_format_samples.py to regenerate them
@@ -167,13 +168,14 @@ v4.3 (via `@tailwindcss/vite`), oxlint 1.75 (linting).
 
 Verified on 2026-09-26:
 
-- **Backend test suite: 124/124 passing** (`python -m pytest tests/ -v`):
+- **Backend test suite: 137/137 passing** (`python -m pytest tests/ -v`):
   auth, RBAC across all three roles, faculty-domain gating, tenant
   isolation, ingestion of every supported format (including OCR and
   corrupt/renamed/empty files), retrieval quality on 14 labeled questions,
   login analytics filtering/pagination/isolation, migrations, the
   RAG/conflict pipeline, chat history export (including an ownership
-  tamper test), and admin account export (including cross-college scoping).
+  tamper test), admin account export (including cross-college scoping), and
+  AI-provider/database failure handling.
 - **Frontend build: clean**, zero errors and zero warnings (`npm run build`).
 - **Lint** (`npm run lint`): zero errors, zero warnings.
 - **Route audit**: every route in `app/api/*.py` has `get_current_user` or
@@ -221,7 +223,7 @@ python3 -m venv venv && source venv/bin/activate   # or venv\Scripts\activate on
 pip install -r requirements.txt
 cp .env.example .env                                # then add a Gemini key
 uvicorn app.main:app --reload --port 8000           # dev server, http://localhost:8000
-python -m pytest tests/ -v                          # full test suite (124 tests)
+python -m pytest tests/ -v                          # full test suite (137 tests)
 ```
 
 **Frontend**

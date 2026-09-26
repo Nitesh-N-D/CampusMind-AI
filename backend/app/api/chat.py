@@ -27,26 +27,16 @@ async def send_message(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
+    session = None
     if payload.session_id:
         session = db.query(models.ChatSession).filter(
             models.ChatSession.id == payload.session_id,
             models.ChatSession.user_id == user.id,
         ).first()
         if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-    else:
-        session = models.ChatSession(
-            college_id=user.college_id,
-            user_id=user.id,
-            title=payload.message[:60],
-            language=payload.language or "en",
-        )
-        db.add(session)
-        db.flush()
+            raise HTTPException(status_code=404, detail="Conversation not found")
 
-    db.add(models.ChatMessage(session_id=session.id, role="user", content=payload.message))
-    db.flush()
-
+    asked_at = datetime.utcnow()
     ai = get_ai_provider()
     result = await answer_question(
         db=db,
@@ -56,6 +46,21 @@ async def send_message(
         student=user if user.role == models.UserRole.STUDENT else None,
         response_language=payload.language or "en",
     )
+
+    # Written only once there is an answer: if the AI call fails, the user
+    # isn't left with a conversation holding an unanswered question.
+    if session is None:
+        session = models.ChatSession(
+            college_id=user.college_id,
+            user_id=user.id,
+            title=payload.message[:60],
+            language=payload.language or "en",
+            created_at=asked_at,
+        )
+        db.add(session)
+        db.flush()
+    db.add(models.ChatMessage(session_id=session.id, role="user", content=payload.message, created_at=asked_at))
+    db.flush()
 
     assistant_msg = models.ChatMessage(
         session_id=session.id,

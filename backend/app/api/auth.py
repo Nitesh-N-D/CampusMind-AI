@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import ACCOUNT_INACTIVE, create_access_token, hash_password, verify_password
 from app.db import models
 from app.db.database import get_db
 from app.schemas.schemas import CollegeCreate, LoginRequest, StudentRegister, TokenResponse
@@ -179,9 +179,9 @@ def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="That email and password don't match. Check both and try again.")
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is not active")
+        raise HTTPException(status_code=403, detail=ACCOUNT_INACTIVE)
 
     _record_login_event(db, user, "login")
     db.commit()

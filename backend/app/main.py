@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import admin, auth, chat, documents, profile
@@ -13,6 +14,7 @@ from app.core.logging_config import configure_logging, logger
 from app.core.security import get_current_user
 from app.db.database import Base, engine
 from app.db.migrations import apply_migrations
+from app.services.ai_provider import AIProviderError
 
 configure_logging(level="DEBUG" if settings.environment == "development" else "INFO")
 
@@ -115,6 +117,32 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     same {"detail": ...} shape as everything else rather than Starlette's
     default {"detail": "Not Found"} inconsistency with custom 404s."""
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(OperationalError)
+async def database_unavailable_handler(request: Request, exc: OperationalError):
+    """The database couldn't be reached (network drop, pooler restart,
+    connection limit). That's temporary and not the user's fault, so say so
+    with a 503 instead of the generic bug message."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error("Database unavailable on request_id=%s: %s", request_id, exc.orig)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "detail": "The database is temporarily unreachable. Please try again in a minute.",
+            "request_id": request_id,
+        },
+    )
+
+
+@app.exception_handler(AIProviderError)
+async def ai_provider_error_handler(request: Request, exc: AIProviderError):
+    """Gemini/OpenAI/Claude timed out, hit a usage limit, or is misconfigured.
+    The message already says which, in plain words; the cause is logged."""
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": str(exc), "request_id": getattr(request.state, "request_id", "unknown")},
+    )
 
 
 @app.exception_handler(Exception)

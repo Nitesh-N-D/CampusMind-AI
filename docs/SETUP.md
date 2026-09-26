@@ -162,3 +162,9 @@ If every step above works, your local setup is fully functional.
 | A document fails with "doesn't look like a ..." | The file's contents don't match its extension (e.g. a renamed file). Re-export it in the stated format. |
 | `.doc`, `.xls`, or `.ppt` upload rejected | Legacy Office formats aren't supported. Save as `.docx`/`.xlsx`/`.pptx`. |
 | An image or scanned PDF fails with "No readable text" | The OCR found no text - check the scan is legible and upright. |
+| Chat says "The AI service took too long to answer" or "is busy right now (usage limit reached)" | Gemini timed out or hit your key's quota. Nothing was saved; press Retry. If it persists, check your quota in Google AI Studio. |
+| Chat says "The AI service isn't set up correctly" | `GEMINI_API_KEY` or `AI_MODEL_NAME` in `backend/.env` is wrong. The server log has Gemini's exact error. |
+| Every page says "The database is temporarily unreachable" | `DATABASE_URL` points at a Postgres server that can't be reached. Check the host, password, and that the database is running. |
+| An error ends with "(Reference: ...)" | Search the backend log for that ID to find the full error. |
+| VS Code shows `Invalid value for '--ignoreDeprecations'` in `tsconfig.app.json` | Fixed: the option (and the deprecated `baseUrl` it silenced) was removed. If it reappears, set VS Code to "Use Workspace Version" of TypeScript. |
+| VS Code says `fpdf2`/`uharfbuzz`/`python-pptx` "is not installed" | The editor's selected interpreter is missing packages. Run `pip install -r backend/requirements.txt` with that interpreter's venv active. |

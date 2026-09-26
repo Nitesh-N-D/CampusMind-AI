@@ -34,28 +34,33 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
 
 
+# One message for every invalid-token case: an expired, tampered, or orphaned
+# token all mean the same thing to the user, and saying which one it was
+# would only help someone forging tokens.
+SESSION_EXPIRED = "Your session has expired. Please sign in again."
+ACCOUNT_INACTIVE = "This account isn't active. Contact your college administrator."
+
+
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=["HS256"])
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=SESSION_EXPIRED)
 
 
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> models.User:
     payload = decode_token(token)
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=401, detail=SESSION_EXPIRED)
+    user = db.get(models.User, user_id)
     if user is None:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=401, detail=SESSION_EXPIRED)
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is not active. Awaiting verification.")
+        raise HTTPException(status_code=403, detail=ACCOUNT_INACTIVE)
     return user
 
 
@@ -65,7 +70,8 @@ def require_role(*roles: str):
 
     def dependency(user: models.User = Depends(get_current_user)) -> models.User:
         if user.role not in roles:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            who = " and ".join(f"{r}s" for r in roles)
+            raise HTTPException(status_code=403, detail=f"Your account doesn't have access to this. It's only for {who}.")
         return user
 
     return dependency

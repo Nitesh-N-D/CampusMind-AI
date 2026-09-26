@@ -146,7 +146,10 @@ export default function Chat() {
       );
       loadSessions();
     } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId + 1));
+      // Nothing was saved, so take the question back off the screen and put
+      // it in the composer: one press of send retries it.
+      setMessages((prev) => prev.filter((m) => m.id !== tempId && m.id !== tempId + 1));
+      setInput(content);
       setError(
         err instanceof ApiError ? err.message : "CampusMind AI is temporarily unavailable. Please try again."
       );
@@ -354,7 +357,7 @@ export default function Chat() {
               {messages.map((m) => (
                 <MessageBubble key={m.id} message={m} onFeedback={giveFeedback} />
               ))}
-              {error && <ErrorBanner message={error} onRetry={() => setError(null)} />}
+              {error && <ErrorBanner message={error} onRetry={input.trim() ? () => send(input) : undefined} />}
               <div ref={bottomRef} />
             </div>
           </div>

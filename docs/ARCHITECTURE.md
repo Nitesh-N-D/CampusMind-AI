@@ -196,6 +196,33 @@ duplicate every field, since that duplication would drift out of sync.
   east of UTC, sent by the browser) and label every time column with the
   offset used, e.g. `UTC+05:30`.
 
+## Error handling
+
+Every error response is `{"detail": "<one plain sentence>"}`, plus a
+`request_id` on 5xx responses that matches the `X-Request-ID` header and the
+server log line.
+
+| Failure | Status | Where it's handled |
+|---|---|---|
+| Validation error | 422 | `validation_exception_handler` in `app/main.py` |
+| Expired, tampered, or orphaned token | 401 | `get_current_user`: one message, "Your session has expired. Please sign in again." |
+| Wrong role | 403 | `require_role`: says who the page is for |
+| AI provider timeout, usage limit, bad key, empty/blocked reply | 503 | `AIProviderError` from `app/services/ai_provider.py` (`_post_json` retries 429/5xx twice) |
+| Database unreachable | 503 | `OperationalError` handler in `app/main.py` |
+| Anything else | 500 | Generic message; the stack trace goes only to the log |
+
+A chat question is written to the database only after the answer exists, so
+a failed AI call leaves no half-saved conversation. Upload failures never
+return an error status; the document is marked `failed` with a
+`processing_error` the admin can read.
+
+In the browser, `src/lib/api.ts` turns every failure into an `ApiError` with
+a readable message: no response at all (server down, offline, CORS) becomes
+"Can't reach the CampusMind server", non-JSON error pages get a message
+chosen by status (413, 429, 502-504), 5xx messages carry the reference ID,
+and a 401 on a signed-in request signs the user out with a toast explaining
+why.
+
 ## Provider abstraction
 
 `app/services/ai_provider.py` and `app/services/embedding_provider.py` each

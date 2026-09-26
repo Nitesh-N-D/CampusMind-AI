@@ -1,3 +1,6 @@
+import { useAuthStore } from "./authStore";
+import { toastError } from "./toastStore";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
@@ -13,19 +16,59 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function handle<T>(res: Response): Promise<T> {
+// Used when the response has no readable detail, e.g. an HTML error page
+// from the hosting proxy while the server restarts.
+function fallbackMessage(status: number): string {
+  if (status === 413) return "That file is too large to upload.";
+  if (status === 429) return "Too many requests. Please wait a moment and try again.";
+  if (status === 502 || status === 503 || status === 504)
+    return "The CampusMind server is starting up or briefly unavailable. Please try again in a minute.";
+  if (status >= 500) return "Something went wrong on our end. Please try again.";
+  return "Something went wrong. Please try again.";
+}
+
+// fetch only rejects when no response arrived at all: server down, wrong
+// API address, offline, or blocked by CORS.
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(
+      "Can't reach the CampusMind server. Check your internet connection and try again.",
+      0
+    );
+  }
+}
+
+async function handle<T>(res: Response, sentToken: boolean): Promise<T> {
   if (!res.ok) {
-    let detail = "Something went wrong. Please try again.";
+    let detail = fallbackMessage(res.status);
+    let requestId: string | undefined;
     try {
       const body = await res.json();
-      detail = body.detail || detail;
+      if (typeof body.detail === "string" && body.detail) detail = body.detail;
+      if (typeof body.request_id === "string") requestId = body.request_id;
     } catch {
-      // response wasn't JSON - keep the generic message
+      // not JSON - keep the status-based message
     }
+    // A signed-in request rejected as unauthenticated means the session is
+    // over; sign out so the route guard sends the user to the login page.
+    // (A 401 from the login form itself carries no token and is left alone.)
+    if (res.status === 401 && sentToken && useAuthStore.getState().isAuthenticated) {
+      useAuthStore.getState().logout();
+      toastError(detail);
+    }
+    if (res.status >= 500 && requestId) detail += ` (Reference: ${requestId})`;
     throw new ApiError(detail, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
+}
+
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const auth = authHeaders();
+  const res = await send(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...auth } });
+  return handle<T>(res, "Authorization" in auth);
 }
 
 async function get<T>(path: string, params?: Record<string, string | undefined>): Promise<T> {
@@ -35,40 +78,31 @@ async function get<T>(path: string, params?: Record<string, string | undefined>)
       if (v !== undefined && v !== "") url.searchParams.set(k, v);
     });
   }
-  const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
-  return handle<T>(res);
+  return request<T>(url.toString());
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(API_BASE + path, {
+  return request<T>(API_BASE + path, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return handle<T>(res);
 }
 
 async function put<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(API_BASE + path, {
+  return request<T>(API_BASE + path, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return handle<T>(res);
 }
 
 async function del<T>(path: string): Promise<T> {
-  const res = await fetch(API_BASE + path, { method: "DELETE", headers: { ...authHeaders() } });
-  return handle<T>(res);
+  return request<T>(API_BASE + path, { method: "DELETE" });
 }
 
 async function postForm<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(API_BASE + path, {
-    method: "POST",
-    headers: { ...authHeaders() },
-    body: form,
-  });
-  return handle<T>(res);
+  return request<T>(API_BASE + path, { method: "POST", body: form });
 }
 
 // Fetches a generated file with the user's token and saves it under the
@@ -76,8 +110,9 @@ async function postForm<T>(path: string, form: FormData): Promise<T> {
 async function download(path: string, params: [string, string][], fallbackName: string): Promise<void> {
   const url = new URL(API_BASE + path);
   params.forEach(([k, v]) => url.searchParams.append(k, v));
-  const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
-  if (!res.ok) await handle<never>(res);
+  const auth = authHeaders();
+  const res = await send(url.toString(), { headers: auth });
+  if (!res.ok) await handle<never>(res, "Authorization" in auth);
   const disposition = res.headers.get("Content-Disposition") || "";
   const filename = /filename="([^"]+)"/.exec(disposition)?.[1] || fallbackName;
   const href = URL.createObjectURL(await res.blob());

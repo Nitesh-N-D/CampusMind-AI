@@ -120,7 +120,7 @@ This is a working prototype covering the full core loop (auth, multi-tenant
 isolation, three roles - student/faculty/admin - with faculty-domain gating,
 multi-format ingestion with OCR, RAG chat, trust scoring, temporal
 retrieval, conflict detection, admin dashboard, login analytics, light/dark
-theming) with a 124-test backend suite (`backend/tests/`) covering auth,
+theming) with a 137-test backend suite (`backend/tests/`) covering auth,
 RBAC across all three roles, tenant isolation, ingestion of every supported
 format, retrieval quality, login analytics, and the RAG/conflict pipeline.
 Not yet built: streaming responses, and multilingual answers without an AI

@@ -14,6 +14,50 @@ from typing import AsyncGenerator
 import httpx
 
 from app.core.config import settings
+from app.core.logging_config import logger
+
+
+class AIProviderError(Exception):
+    """The AI service couldn't produce an answer. The message is written for
+    the student; the technical cause is logged, never sent to the client."""
+
+
+RETRYABLE = (429, 500, 502, 503, 504)
+
+
+async def _post_json(provider: str, url: str, headers: dict, payload: dict, timeout: float = 60) -> dict:
+    """POST with retries on rate limits and server errors, turning every
+    failure into an AIProviderError with a message a student can act on."""
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for attempt in range(3):
+            try:
+                resp = await client.post(url, headers=headers, json=payload)
+            except httpx.TimeoutException:
+                logger.warning("%s timed out after %ss", provider, timeout)
+                raise AIProviderError("The AI service took too long to answer. Please ask again in a moment.")
+            except httpx.HTTPError as exc:
+                logger.warning("%s unreachable: %r", provider, exc)
+                raise AIProviderError("The AI service can't be reached right now. Please try again in a moment.")
+            if resp.status_code == 200:
+                return resp.json()
+            if resp.status_code in RETRYABLE and attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+                continue
+            break
+
+    logger.error("%s returned %s: %s", provider, resp.status_code, resp.text[:500])
+    if resp.status_code == 429:
+        raise AIProviderError("The AI service is busy right now (usage limit reached). Please try again in a minute.")
+    if resp.status_code in (400, 401, 403, 404):
+        raise AIProviderError("The AI service isn't set up correctly. Please let your college administrator know.")
+    raise AIProviderError("The AI service is unavailable right now. Please try again in a moment.")
+
+
+def _require_text(provider: str, text: str | None) -> str:
+    if not text or not text.strip():
+        logger.warning("%s returned no text", provider)
+        raise AIProviderError("The AI service didn't return an answer to this question. Try rephrasing it.")
+    return text
 
 
 class AIProvider(abc.ABC):
@@ -62,44 +106,13 @@ class GeminiProvider(AIProvider):
             }
         }
 
-        async with httpx.AsyncClient(timeout=60) as client:
-            last_response = None
-
-            for attempt in range(3):
-                resp = await client.post(
-                    url,
-                    headers=headers,
-                    json=payload,
-                )
-
-                last_response = resp
-
-                # Successful response
-                if resp.status_code == 200:
-                    data = resp.json()
-
-                    try:
-                        return data["candidates"][0]["content"]["parts"][0]["text"]
-                    except (KeyError, IndexError, TypeError):
-                        return "Gemini returned an unexpected response format."
-
-                # Retry temporary server/rate-limit errors
-                if resp.status_code in (429, 500, 502, 503, 504):
-                    if attempt < 2:
-                        await asyncio.sleep(2 ** attempt)
-                        continue
-
-                # Permanent/error response
-                break
-
-            # IMPORTANT:
-            # Show Gemini's actual error message, but never show the API key.
-            error_body = last_response.text if last_response is not None else "No response"
-
-            raise RuntimeError(
-                f"Gemini API error {last_response.status_code if last_response else 'unknown'}: "
-                f"{error_body}"
-            )
+        data = await _post_json("Gemini", url, headers, payload)
+        try:
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError):
+            # e.g. the answer was blocked by a safety filter
+            text = None
+        return _require_text("Gemini", text)
 
     async def stream(
         self,
@@ -121,21 +134,24 @@ class OpenAIProvider(AIProvider):
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         if not self.api_key:
             return await MockProvider().generate(system_prompt, user_prompt)
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": 0.2,
-                },
-            )
-            resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+        data = await _post_json(
+            "OpenAI",
+            "https://api.openai.com/v1/chat/completions",
+            {"Authorization": f"Bearer {self.api_key}"},
+            {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.2,
+            },
+        )
+        try:
+            text = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            text = None
+        return _require_text("OpenAI", text)
 
     async def stream(self, system_prompt: str, user_prompt: str) -> AsyncGenerator[str, None]:
         text = await self.generate(system_prompt, user_prompt)
@@ -151,23 +167,18 @@ class ClaudeProvider(AIProvider):
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         if not self.api_key:
             return await MockProvider().generate(system_prompt, user_prompt)
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                },
-                json={
-                    "model": self.model,
-                    "max_tokens": 1024,
-                    "system": system_prompt,
-                    "messages": [{"role": "user", "content": user_prompt}],
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return "".join(b.get("text", "") for b in data.get("content", []))
+        data = await _post_json(
+            "Claude",
+            "https://api.anthropic.com/v1/messages",
+            {"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
+            {
+                "model": self.model,
+                "max_tokens": 1024,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_prompt}],
+            },
+        )
+        return _require_text("Claude", "".join(b.get("text", "") for b in data.get("content", [])))
 
     async def stream(self, system_prompt: str, user_prompt: str) -> AsyncGenerator[str, None]:
         text = await self.generate(system_prompt, user_prompt)

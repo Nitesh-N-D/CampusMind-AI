@@ -56,6 +56,13 @@
       responses, a global unhandled-exception handler that never leaks
       internals, and structured request logging with a traceable
       X-Request-ID on every response
+- [x] Clear failure messages end to end: AI provider timeouts, usage limits,
+      bad keys, and empty replies become one plain sentence (503) instead of
+      a generic 500 or a fake answer; a database outage is a 503 saying so;
+      an expired session signs the user out and says why; an unreachable
+      server, a proxy error page, or a 500 (with its reference ID) each get
+      their own message in the browser; a failed chat question is handed
+      back to the composer and the chat Retry button really resends it
 - [x] Toast system replacing all `alert()` calls
 - [x] Voice input for chat via the Web Speech API (English/Tamil/Hindi),
       with graceful degradation on unsupported browsers
@@ -75,7 +82,7 @@
       also requires sign-in and returns only `{"status":"ok"}`
 - [x] Provider abstraction for AI + embeddings (Gemini/OpenAI/Claude/local)
 - [x] Full frontend: 14 pages, responsive, custom design system, real SEO
-- [x] 124-test backend suite covering auth, RBAC, faculty gating, tenant
+- [x] 137-test backend suite covering auth, RBAC, faculty gating, tenant
       isolation, ingestion of every format, retrieval quality, login
       analytics, migrations, RAG, and conflict detection and resolution
 

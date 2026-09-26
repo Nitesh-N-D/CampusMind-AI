@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.db import models
 from app.ingestion.chunker import chunk_pages
 from app.ingestion.extractors import ExtractionError, extract_document, file_type_for
+from app.core.logging_config import logger
+from app.services.ai_provider import AIProviderError
 from app.services.embedding_provider import get_embedding_provider
 from app.services.trust_engine import score_document
 
@@ -73,6 +75,13 @@ async def process_document(db: Session, document: models.Document) -> None:
         document.status = models.DocumentStatus.FAILED
         if isinstance(exc, ExtractionError):
             document.processing_error = str(exc)[:500]
+        elif isinstance(exc, AIProviderError):
+            document.processing_error = f"Couldn't index this document: {exc} The file itself is fine."[:500]
         else:
-            document.processing_error = f"Processing failed unexpectedly: {exc}"[:500]
+            # The raw exception is for the server log, not the admin's screen.
+            logger.exception("Ingestion failed for document_id=%s", document.id)
+            document.processing_error = (
+                "Processing failed unexpectedly. Try uploading the file again; "
+                "if it keeps failing, re-save it and upload the new copy."
+            )
         db.commit()

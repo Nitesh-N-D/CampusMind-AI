@@ -28,6 +28,11 @@ An unauthenticated probe gets `401`, which still proves the server is up.
   stored in plain text.
 - JWT bearer tokens (`python-jose`), expiry configurable via
   `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- Expired, tampered, and orphaned tokens all get the same 401 message, and
+  a wrong password gets the same message whether or not the email exists,
+  so error text never helps someone probe accounts or forge tokens.
+- Errors from AI providers are logged server-side only; the client gets a
+  plain sentence, never the provider's response body.
 - `SECRET_KEY` must be overridden in production - the default in
   `config.py` is explicitly a dev placeholder. Generate one with
   `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`.

@@ -15,9 +15,8 @@ import math
 import re
 from typing import List
 
-import httpx
-
 from app.core.config import settings
+from app.services.ai_provider import AIProviderError, _post_json
 
 LOCAL_DIM = 384
 
@@ -88,16 +87,11 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
             "output_dimensionality": self.dimension,
         }
 
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                url,
-                headers=headers,
-                json=payload,
-            )
-
-            resp.raise_for_status()
-
-            return resp.json()["embedding"]["values"]
+        data = await _post_json("Gemini embeddings", url, headers, payload, timeout=30)
+        try:
+            return data["embedding"]["values"]
+        except (KeyError, TypeError):
+            raise AIProviderError("The AI service returned an unreadable response. Please try again.")
 
 
 class OpenAIEmbeddingProvider(EmbeddingProvider):
@@ -112,14 +106,17 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
     async def embed(self, text: str) -> List[float]:
         if not self.api_key:
             return await LocalEmbeddingProvider().embed(text)
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/embeddings",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"model": self.model, "input": text},
-            )
-            resp.raise_for_status()
-            return resp.json()["data"][0]["embedding"]
+        data = await _post_json(
+            "OpenAI embeddings",
+            "https://api.openai.com/v1/embeddings",
+            {"Authorization": f"Bearer {self.api_key}"},
+            {"model": self.model, "input": text},
+            timeout=30,
+        )
+        try:
+            return data["data"][0]["embedding"]
+        except (KeyError, IndexError, TypeError):
+            raise AIProviderError("The AI service returned an unreadable response. Please try again.")
 
 
 def get_embedding_provider() -> EmbeddingProvider:

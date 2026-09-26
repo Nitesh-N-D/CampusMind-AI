@@ -1,7 +1,7 @@
 interface ExportableMessage {
   role: "user" | "assistant";
   content: string;
-  citations?: { document_title: string; page: number | null; trust_score: number }[];
+  citations?: { document_title: string; page: number | null; section?: string | null; trust_score: number }[];
   confidence?: number | null;
 }
 
@@ -32,7 +32,7 @@ export function conversationToMarkdown(
         lines.push("");
         lines.push("Sources:");
         for (const c of m.citations) {
-          const page = c.page ? `, page ${c.page}` : "";
+          const page = c.page ? `, page ${c.page}` : c.section ? `, ${c.section}` : "";
           lines.push(`- ${c.document_title}${page} (trust ${Math.round(c.trust_score)}%)`);
         }
       }

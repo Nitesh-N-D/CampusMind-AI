@@ -2,7 +2,7 @@ import { LegalLayout } from "@/layouts/LegalLayout";
 
 export default function Privacy() {
   return (
-    <LegalLayout title="Privacy Policy" updated="August 2026">
+    <LegalLayout title="Privacy Policy" updated="September 2026">
       <p>
         CampusMind AI is self-hosted software: each college workspace runs on infrastructure
         chosen and operated by that college's own administrators, not by a single central
@@ -29,8 +29,15 @@ export default function Privacy() {
             gives, stored so you can revisit past conversations.
           </li>
           <li>
-            <strong>Search queries:</strong> logged with a confidence score, used only in
-            aggregate by admins to see which topics the knowledge base answers poorly.
+            <strong>Question analytics:</strong> the text of each question is logged with a
+            confidence score. Admins see these only in aggregate - the most-asked and
+            poorly answered questions, without names attached - to find gaps in the
+            knowledge base.
+          </li>
+          <li>
+            <strong>Sign-in activity:</strong> each successful sign-in and registration is
+            recorded with your name, email address, role, and the time. Your college's admins
+            can view this log.
           </li>
         </ul>
       </section>
@@ -53,9 +60,9 @@ export default function Privacy() {
           different college's admins and students cannot see your data, your documents, or
           your questions. Within your own college, your chat history and personalization
           details are visible only to you. College admins can see aggregate analytics
-          (e.g. "how many questions were asked this month") but not your individual
-          conversations, unless they use the "report incorrect answer" feedback you
-          explicitly submit.
+          (e.g. "how many questions were asked this month") and the sign-in log described
+          above, but not your individual conversations, unless they use the "report
+          incorrect answer" feedback you explicitly submit.
         </p>
       </section>
 

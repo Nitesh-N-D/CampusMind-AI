@@ -116,18 +116,4 @@ def detect_conflicts(
         db.flush()
         found.append(conflict)
 
-        db.add(
-            models.Notification(
-                college_id=college_id,
-                user_id=None,
-                target_role="admin",
-                title=f"Conflicting sources found: {topic.replace('_', ' ')}",
-                body=(
-                    f"'{doc_a.title}' and '{doc_b.title}' disagree on {topic.replace('_', ' ')} "
-                    f"({a.value} vs {b.value}). Review and resolve in the admin conflicts panel."
-                ),
-                category="conflict",
-            )
-        )
-
     return found

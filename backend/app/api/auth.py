@@ -30,7 +30,8 @@ def register_college(payload: CollegeCreate, db: Session = Depends(get_db)):
         )
 
     existing = db.query(models.College).filter(
-        models.College.official_domain == supplied_domain
+        (models.College.official_domain == supplied_domain)
+        | (models.College.faculty_domain == supplied_domain)
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail="This college domain is already registered.")
@@ -66,9 +67,13 @@ def register_college(payload: CollegeCreate, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/register-student", response_model=TokenResponse)
-def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
-    domain = _domain_of(payload.email)
+FACULTY_SIGNUP_CLOSED = (
+    "Faculty signup isn't set up for this college yet - no faculty email domain is "
+    "registered. Ask your admin to add a faculty domain first."
+)
+
+
+def _college_for_student(db: Session, domain: str) -> models.College:
     college = db.query(models.College).filter(models.College.official_domain == domain).first()
     if not college:
         raise HTTPException(
@@ -79,13 +84,67 @@ def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
                 "college email address."
             ),
         )
+    return college
+
+
+def _college_for_faculty(db: Session, domain: str) -> models.College:
+    """Faculty are matched ONLY against a college's admin-set faculty_domain.
+    There is deliberately no fallback to official_domain: an unset
+    faculty_domain means faculty signup at that college is closed."""
+    college = db.query(models.College).filter(models.College.faculty_domain == domain).first()
+    if college:
+        return college
+
+    by_official = db.query(models.College).filter(models.College.official_domain == domain).first()
+    if by_official is not None and not by_official.faculty_domain:
+        raise HTTPException(status_code=400, detail=FACULTY_SIGNUP_CLOSED)
+    if by_official is not None:
+        # The college exists and has a faculty domain, but this isn't it.
+        # The faculty domain itself is not revealed in the error.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Faculty accounts must be created with your college's faculty email address, "
+                "not this one. Check with your admin which address to use."
+            ),
+        )
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "This email domain isn't registered for faculty signup at any college on "
+            "CampusMind AI. Use your official faculty email address, or ask your admin "
+            "to set up faculty signup."
+        ),
+    )
+
+
+def _record_login_event(db: Session, user: models.User, event_type: str) -> None:
+    if user.role == models.UserRole.ADMIN:
+        return
+    db.add(
+        models.LoginEvent(
+            college_id=user.college_id,
+            user_id=user.id,
+            role=user.role.value,
+            event_type=event_type,
+        )
+    )
+
+
+@router.post("/register-student", response_model=TokenResponse)
+def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
+    if payload.role not in ("student", "faculty"):
+        raise HTTPException(status_code=400, detail="Role must be 'student' or 'faculty'.")
+
+    domain = _domain_of(payload.email)
+    if payload.role == "faculty":
+        college = _college_for_faculty(db, domain)
+    else:
+        college = _college_for_student(db, domain)
 
     existing_user = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing_user:
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
-
-    if payload.role not in ("student", "faculty"):
-        raise HTTPException(status_code=400, detail="Role must be 'student' or 'faculty'.")
 
     student = models.User(
         college_id=college.id,
@@ -101,6 +160,8 @@ def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
         section=payload.section if payload.role == "student" else None,
     )
     db.add(student)
+    db.flush()
+    _record_login_event(db, student, "register")
     db.commit()
     db.refresh(student)
 
@@ -121,6 +182,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is not active")
+
+    _record_login_event(db, user, "login")
+    db.commit()
 
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     return TokenResponse(

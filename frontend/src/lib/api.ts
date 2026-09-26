@@ -100,6 +100,7 @@ export interface DocumentOut {
   status: "uploaded" | "processing" | "ready" | "failed" | "archived";
   is_demo_data: boolean;
   page_count: number;
+  file_type: "pdf" | "word" | "excel" | "csv" | "text" | "image" | "unknown";
   processing_error?: string | null;
   created_at: string;
 }
@@ -151,26 +152,6 @@ export interface ChatMessageOut {
   created_at: string;
 }
 
-export interface SearchResult {
-  document_id: number;
-  document_title: string;
-  snippet: string;
-  page: number | null;
-  department: string | null;
-  date: string | null;
-  trust_score: number;
-  relevance_score: number;
-}
-
-export interface TimelineEvent {
-  id: number;
-  title: string;
-  category: string;
-  event_date: string;
-  department: string | null;
-  document_id: number;
-}
-
 export interface KnowledgeHealth {
   health_score: number;
   documents_indexed: number;
@@ -194,25 +175,35 @@ export interface ConflictRecord {
   created_at: string;
 }
 
-export interface ChangeLog {
-  id: number;
-  old_document_id: number;
-  old_document_title: string;
-  new_document_id: number;
-  new_document_title: string;
-  topic: string;
-  old_value: string | null;
-  new_value: string | null;
-  impact_summary: string | null;
-  created_at: string;
-}
-
 export interface Analytics {
   total_questions_answered: number;
   unanswered_questions: number;
   low_confidence_responses: number;
   top_queries: { query: string; count: number }[];
   recent_uploads: { id: number; title: string; status: string; created_at: string }[];
+}
+
+export interface LoginEvent {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  role: "student" | "faculty";
+  event_type: "login" | "register";
+  created_at: string;
+}
+
+export interface LoginEventPage {
+  items: LoginEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WorkspaceSettings {
+  college_name: string;
+  official_domain: string;
+  faculty_domain: string | null;
 }
 
 export interface Profile {
@@ -228,15 +219,6 @@ export interface Profile {
   academic_batch: string | null;
   interests: string[];
   preferred_language: string;
-}
-
-export interface NotificationOut {
-  id: number;
-  title: string;
-  body: string;
-  category: string;
-  is_read: boolean;
-  created_at: string;
 }
 
 export const api = {
@@ -267,7 +249,6 @@ export const api = {
     upload: (form: FormData) => postForm<DocumentOut>("/api/documents/upload", form),
     remove: (id: number) => del<{ status: string }>(`/api/documents/${id}`),
     verify: (id: number) => post<DocumentOut>(`/api/documents/${id}/verify`),
-    changes: () => get<ChangeLog[]>("/api/documents/changes"),
   },
   chat: {
     send: (data: { message: string; session_id: number | null; language: string }) =>
@@ -280,10 +261,6 @@ export const api = {
     feedback: (messageId: number, feedback: "up" | "down", note?: string) =>
       post(`/api/chat/messages/${messageId}/feedback`, { feedback, note }),
   },
-  search: (q: string, filters?: Record<string, string | undefined>) =>
-    get<SearchResult[]>("/api/search", { q, ...filters }),
-  timeline: (params?: Record<string, string | undefined>) =>
-    get<TimelineEvent[]>("/api/timeline", params),
   profile: {
     me: () => get<Profile>("/api/profile/me"),
     update: (data: Partial<Profile>) => put<Profile>("/api/profile/me", data),
@@ -295,14 +272,11 @@ export const api = {
     resolveConflict: (id: number, authoritative_document_id: number, resolution_note?: string) =>
       post(`/api/admin/conflicts/${id}/resolve`, { authoritative_document_id, resolution_note }),
     analytics: () => get<Analytics>("/api/admin/analytics"),
-    changeLogs: () => get<ChangeLog[]>("/api/admin/change-logs"),
-  },
-  notifications: {
-    list: (unreadOnly?: boolean) =>
-      get<NotificationOut[]>("/api/notifications", unreadOnly ? { unread_only: "true" } : undefined),
-    unreadCount: () => get<{ count: number }>("/api/notifications/unread-count"),
-    markRead: (id: number) => post<NotificationOut>(`/api/notifications/${id}/read`),
-    readAll: () => post<{ status: string }>("/api/notifications/read-all"),
+    loginEvents: (params: { role?: string; start?: string; end?: string; page?: string; page_size?: string }) =>
+      get<LoginEventPage>("/api/admin/login-events", params),
+    settings: () => get<WorkspaceSettings>("/api/admin/settings"),
+    setFacultyDomain: (faculty_domain: string | null) =>
+      put<WorkspaceSettings>("/api/admin/settings/faculty-domain", { faculty_domain }),
   },
 };
 

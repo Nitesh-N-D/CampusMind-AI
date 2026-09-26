@@ -55,6 +55,10 @@ class College(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
     official_domain = Column(String(255), nullable=False, unique=True, index=True)
+    # Gates faculty signup. Starts unset (faculty signup closed) and can only
+    # be set by an admin via PUT /api/admin/settings/faculty-domain - never
+    # at college registration, and never inferred from official_domain.
+    faculty_domain = Column(String(255), nullable=True, unique=True, index=True)
     logo_url = Column(String(500), nullable=True)
     is_verified = Column(Boolean, default=True)  # reserved for future manual platform review
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -130,7 +134,6 @@ class Document(Base):
 
     college = relationship("College", back_populates="documents")
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
-    events = relationship("ExtractedEvent", back_populates="document", cascade="all, delete-orphan")
 
 
 class DocumentChunk(Base):
@@ -178,38 +181,8 @@ class DocumentConflict(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class ExtractedEvent(Base):
-    """Feature 6: Deadline & Event Intelligence"""
-
-    __tablename__ = "extracted_events"
-
-    id = Column(Integer, primary_key=True)
-    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
-    title = Column(String(500), nullable=False)
-    category = Column(String(60), nullable=False)  # academic, exam, placement, fees, event, deadline
-    event_date = Column(DateTime, nullable=False)
-    department = Column(String(120), nullable=True)
-    source_snippet = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    document = relationship("Document", back_populates="events")
 
 
-class DocumentChangeLog(Base):
-    """Feature 7: What Changed? Intelligence"""
-
-    __tablename__ = "document_change_logs"
-
-    id = Column(Integer, primary_key=True)
-    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
-    old_document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
-    new_document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
-    field_or_topic = Column(String(255), nullable=False)
-    old_value = Column(Text, nullable=True)
-    new_value = Column(Text, nullable=True)
-    impact_summary = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class ChatSession(Base):
@@ -258,15 +231,19 @@ class SearchLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class Notification(Base):
-    __tablename__ = "notifications"
+class LoginEvent(Base):
+    """Successful student/faculty sign-ins and registrations, for the admin
+    login log. Admin sign-ins aren't recorded - the log is about who is using
+    the assistant."""
+
+    __tablename__ = "login_events"
 
     id = Column(Integer, primary_key=True)
-    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = broadcast to whole college
-    target_role = Column(String(20), nullable=True)  # null = everyone, else "admin" or "student"
-    title = Column(String(255), nullable=False)
-    body = Column(Text, nullable=False)
-    category = Column(String(60), default="general")
-    is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # Role at the time of the event, so the log stays accurate if it changes.
+    role = Column(String(20), nullable=False)
+    event_type = Column(String(20), nullable=False)  # login, register
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = relationship("User")

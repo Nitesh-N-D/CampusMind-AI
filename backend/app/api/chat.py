@@ -62,16 +62,20 @@ async def send_message(
     )
     db.add(assistant_msg)
 
-    db.add(
-        models.SearchLog(
-            college_id=user.college_id,
-            user_id=user.id,
-            query=payload.message,
-            result_count=len(result.citations),
-            top_confidence=result.confidence,
-            was_answered=not result.abstained,
+    # Chat is built for students and faculty. Admins can send test questions
+    # to verify an upload, but those must not skew the usage analytics and
+    # low-confidence metrics that describe what real end users are asking.
+    if user.role != models.UserRole.ADMIN:
+        db.add(
+            models.SearchLog(
+                college_id=user.college_id,
+                user_id=user.id,
+                query=payload.message,
+                result_count=len(result.citations),
+                top_confidence=result.confidence,
+                was_answered=not result.abstained,
+            )
         )
-    )
 
     db.commit()
     db.refresh(assistant_msg)

@@ -3,7 +3,7 @@
 ## Authentication & authorization coverage (audited)
 
 Every route in `app/api/` was checked programmatically for an auth
-dependency. Result: all 28 API routes require a valid JWT via
+dependency. Result: all 24 API routes require a valid JWT via
 `get_current_user` or `require_role(...)`, except the three that are
 supposed to be public - `POST /api/auth/register-college`,
 `POST /api/auth/register-student`, `POST /api/auth/login` - which is
@@ -17,9 +17,15 @@ backend's independent, unconditional JWT check on every protected route,
 confirmed by `tests/test_auth.py::test_unauthenticated_request_rejected`
 and equivalent checks throughout the suite.
 
+The one other public route is `GET /api/health` in `app/main.py`, a
+liveness probe. It returns no user or college data, but it does report the
+configured AI provider name and environment; trim it if you'd rather not
+expose that.
+
 ## Authentication
 
-- Passwords hashed with bcrypt (via `passlib`), never stored in plain text.
+- Passwords hashed with bcrypt (the `bcrypt` package directly), never
+  stored in plain text.
 - JWT bearer tokens (`python-jose`), expiry configurable via
   `ACCESS_TOKEN_EXPIRE_MINUTES`.
 - `SECRET_KEY` must be overridden in production - the default in
@@ -28,25 +34,37 @@ and equivalent checks throughout the suite.
 
 ## Authorization
 
-- Two roles: `admin`, `student`. Stored server-side on the `users` table.
+- Three roles: `admin`, `student`, `faculty`. Stored server-side on the
+  `users` table.
 - Every protected endpoint depends on `require_role(...)` or
   `get_current_user`, both of which re-derive the user from the verified
   JWT - the role is never trusted from a request body or query parameter.
-- Verified in `tests/test_auth.py`: students get `403` on document upload
-  and on every `/api/admin/*` route.
+- Students and faculty can use chat and their own profile only. The
+  document library, upload, deletion, conflicts, analytics, login log, and
+  settings are `require_role("admin")`. Students and faculty see document
+  content only as citations inside answers.
+- Verified in `tests/test_auth.py`, `tests/test_rag.py::test_document_library_is_admin_only`,
+  `tests/test_ingestion_formats.py::test_students_cannot_upload_any_format`,
+  and `tests/test_login_events.py::test_login_log_is_admin_only`: non-admins
+  get `403` on document routes and every `/api/admin/*` route.
 
 ## Multi-tenant isolation
 
 - Every college-scoped table has a `college_id` column.
 - Every query filters by `current_user.college_id`, derived from the token
   - never from a client-supplied college ID.
-- Verified in `tests/test_auth.py::test_token_from_one_college_cannot_see_another_colleges_data`.
+- Verified in `tests/test_auth.py::test_token_from_one_college_cannot_see_another_colleges_data`
+  and `tests/test_login_events.py::test_login_log_is_isolated_per_college`.
 
 ## Domain-restricted signup
 
 - Each college workspace declares one `official_domain` at creation time.
 - Student (and additional admin) signup checks the email's domain against
   it server-side and rejects mismatches with `400`.
+- Faculty signup is checked only against the college's `faculty_domain`,
+  which an admin sets in Settings (it can't be set at college registration).
+  It never falls back to `official_domain`; while it's unset, faculty
+  signup at that college is closed. Covered by `tests/test_faculty_domain.py`.
 - This is a lightweight admission control suited to a class project /
   small-department pilot. For a larger production rollout, layer on actual
   email verification (magic link or OTP) so a domain match alone isn't
@@ -54,14 +72,23 @@ and equivalent checks throughout the suite.
 
 ## Input validation & upload safety
 
-- Only `.pdf` files accepted (`ALLOWED_EXTENSIONS` in `app/api/documents.py`).
-- Size capped by `MAX_UPLOAD_MB` (default 25MB).
+- Uploads are admin-only. Accepted extensions are `.pdf`, `.docx`,
+  `.xlsx`, `.csv`, `.txt`, `.jpg`/`.jpeg`, `.png` (`FILE_TYPES` in
+  `app/ingestion/extractors.py`). Legacy Office formats are rejected with a
+  message naming the modern format.
+- The file's first bytes must match its extension
+  (`content_matches_type`): a renamed executable or a `.txt` that's really
+  a PDF is rejected before any parser touches it.
+- Empty files are rejected, and size is capped by `MAX_UPLOAD_MB` (default
+  25MB). Spreadsheets and CSVs are capped at 20,000 rows and images at 40
+  megapixels, so a small file can't expand into an outsized parse.
 - Uploaded files are stored under a generated UUID filename, not the
   user-supplied one, avoiding path traversal via filename.
-- Ingestion failures (corrupt PDFs, OCR errors, provider outages) are
+- Ingestion failures (corrupt files, OCR errors, provider outages) are
   caught in `app/ingestion/pipeline.py` and recorded on the document as a
-  `processing_error` - they never propagate as an unhandled 500. Covered by
-  `tests/test_rag.py::test_malformed_pdf_fails_gracefully_not_500`.
+  user-facing `processing_error` - they never propagate as an unhandled
+  500. Covered by `tests/test_rag.py::test_malformed_pdf_fails_gracefully_not_500`
+  and the corrupt/renamed/empty cases in `tests/test_ingestion_formats.py`.
 
 ## Profile pictures (Cloudinary)
 
@@ -83,7 +110,7 @@ and equivalent checks throughout the suite.
 - Names and nicknames are validated server-side (`ProfileUpdate` in
   `app/schemas/schemas.py`): full name can't be empty or contain digits,
   nicknames are restricted to a safe character set to prevent stored XSS in
-  a field that renders across the sidebar, chat, and admin views.
+  a field that renders in the account menu, chat, and admin views.
 
 ## Secrets
 
@@ -105,6 +132,14 @@ and equivalent checks throughout the suite.
 - `PUT /api/profile/me` lets a student update it at any time.
 - `DELETE /api/profile/me` clears the personalization fields without
   deleting the account or chat history (`app/api/profile.py`).
+
+## Sign-in log
+
+- Each successful student or faculty login and registration writes a
+  `login_events` row: user, role, event type, timestamp. Failed attempts
+  and admin logins are not recorded. No IP address or device data is kept.
+- Only admins of the same college can read it (`GET /api/admin/login-events`).
+  This is disclosed to users on the Privacy page.
 
 ## Known gaps for a production rollout
 

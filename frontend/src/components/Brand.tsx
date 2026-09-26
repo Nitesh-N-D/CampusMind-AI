@@ -2,7 +2,7 @@ export function Wordmark({ className = "", dark = false }: { className?: string;
   return (
     <span
       className={`inline-flex items-center gap-2 font-display font-semibold tracking-tight ${className}`}
-      style={{ color: dark ? "var(--color-paper-50)" : "var(--color-navy-900)" }}
+      style={{ color: dark ? "var(--color-on-navy)" : "var(--color-brand-ink)" }}
     >
       <MarkIcon dark={dark} />
       CampusMind <span style={{ color: "var(--color-violet-500)" }}>AI</span>
@@ -11,7 +11,7 @@ export function Wordmark({ className = "", dark = false }: { className?: string;
 }
 
 export function MarkIcon({ size = 22, dark = false }: { size?: number; dark?: boolean }) {
-  const ring = dark ? "var(--color-paper-100)" : "var(--color-navy-900)";
+  const ring = dark ? "var(--color-on-navy)" : "var(--color-brand-ink)";
   const accent = "var(--color-violet-500)";
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">

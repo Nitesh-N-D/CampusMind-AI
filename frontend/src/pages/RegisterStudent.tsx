@@ -101,9 +101,13 @@ export default function RegisterStudent() {
         <Input
           id="email"
           type="email"
-          label="College email"
-          placeholder="you@yourcollege.edu"
-          hint="Your college admin must have already set up their workspace with this domain."
+          label={role === "faculty" ? "Faculty email" : "College email"}
+          placeholder={role === "faculty" ? "you@faculty.yourcollege.edu" : "you@yourcollege.edu"}
+          hint={
+            role === "faculty"
+              ? "Use your official faculty email address. Faculty signup opens once your college admin has added a faculty domain."
+              : "Your college admin must have already set up their workspace with this domain."
+          }
           required
           value={form.email}
           onChange={update("email")}

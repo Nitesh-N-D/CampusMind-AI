@@ -7,15 +7,23 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import get_current_user, require_role
+from app.core.security import require_role
 from app.db import models
 from app.db.database import get_db
+from app.ingestion.extractors import content_matches_type, file_type_for, unsupported_type_message
 from app.ingestion.pipeline import process_document
-from app.schemas.schemas import ChangeLogOut, DocumentOut
+from app.schemas.schemas import DocumentOut
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-ALLOWED_EXTENSIONS = {".pdf"}
+FILE_TYPE_LABELS = {
+    "pdf": "PDF",
+    "word": "Word document",
+    "excel": "Excel spreadsheet",
+    "csv": "CSV spreadsheet",
+    "text": "text file",
+    "image": "image",
+}
 
 
 @router.post("/upload", response_model=DocumentOut)
@@ -35,13 +43,23 @@ async def upload_document(
     db: Session = Depends(get_db),
     admin: models.User = Depends(require_role("admin")),
 ):
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Only PDF files are supported right now.")
+    filename = file.filename or ""
+    file_type = file_type_for(filename)
+    if file_type is None:
+        raise HTTPException(status_code=400, detail=unsupported_type_message(filename))
+    ext = os.path.splitext(filename)[1].lower()
 
     contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="This file is empty.")
     if len(contents) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"File exceeds {settings.max_upload_mb}MB limit.")
+    if not content_matches_type(file_type, contents[:8192]):
+        raise HTTPException(
+            status_code=400,
+            detail=f"This file's contents don't look like a {FILE_TYPE_LABELS[file_type]}. "
+            "It may be damaged or renamed from another format.",
+        )
 
     os.makedirs(settings.upload_dir, exist_ok=True)
     stored_name = f"{uuid.uuid4().hex}{ext}"
@@ -66,7 +84,7 @@ async def upload_document(
         academic_year=academic_year,
         semester=semester,
         file_path=stored_path,
-        original_filename=file.filename,
+        original_filename=filename,
         published_date=parse_dt(published_date),
         effective_date=parse_dt(effective_date),
         expiry_date=parse_dt(expiry_date),
@@ -76,8 +94,15 @@ async def upload_document(
         status=models.DocumentStatus.UPLOADED,
     )
     if supersedes_id:
-        old = db.query(models.Document).get(supersedes_id)
-        document.version = (old.version + 1) if old else 1
+        old = (
+            db.query(models.Document)
+            .filter(models.Document.id == supersedes_id, models.Document.college_id == admin.college_id)
+            .first()
+        )
+        if not old:
+            os.remove(stored_path)
+            raise HTTPException(status_code=400, detail="The document this replaces wasn't found in your workspace.")
+        document.version = old.version + 1
 
     db.add(document)
     db.commit()
@@ -108,6 +133,7 @@ def _to_out(doc: models.Document) -> DocumentOut:
         status=doc.status.value,
         is_demo_data=doc.is_demo_data,
         page_count=doc.page_count,
+        file_type=file_type_for(doc.original_filename or doc.file_path) or "unknown",
         processing_error=doc.processing_error,
         created_at=doc.created_at,
     )
@@ -118,9 +144,11 @@ def list_documents(
     department: Optional[str] = None,
     document_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    admin: models.User = Depends(require_role("admin")),
 ):
-    q = db.query(models.Document).filter(models.Document.college_id == user.college_id)
+    # Admin-only: students and faculty reach documents through chat answers
+    # and their citations, not by browsing the library.
+    q = db.query(models.Document).filter(models.Document.college_id == admin.college_id)
     if department:
         q = q.filter(models.Document.department == department)
     if document_type:
@@ -165,43 +193,3 @@ def verify_document(
     db.commit()
     return _to_out(doc)
 
-
-@router.get("/changes", response_model=List[ChangeLogOut])
-def list_changes(
-    db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
-):
-    """Feature 7 - 'What Changed?' Intelligence. Unlike most admin
-    analytics, this is intentionally visible to every role (student,
-    faculty, admin): it's the whole point of the feature that students see
-    what changed in a regulation that affects them, not just admins."""
-    logs = (
-        db.query(models.DocumentChangeLog)
-        .filter(models.DocumentChangeLog.college_id == user.college_id)
-        .order_by(models.DocumentChangeLog.created_at.desc())
-        .all()
-    )
-    doc_ids = {l.old_document_id for l in logs} | {l.new_document_id for l in logs}
-    docs_by_id = {
-        d.id: d
-        for d in db.query(models.Document).filter(models.Document.id.in_(doc_ids)).all()
-    }
-    return [
-        ChangeLogOut(
-            id=l.id,
-            old_document_id=l.old_document_id,
-            old_document_title=docs_by_id[l.old_document_id].title
-            if l.old_document_id in docs_by_id
-            else "Deleted document",
-            new_document_id=l.new_document_id,
-            new_document_title=docs_by_id[l.new_document_id].title
-            if l.new_document_id in docs_by_id
-            else "Deleted document",
-            topic=l.field_or_topic,
-            old_value=l.old_value,
-            new_value=l.new_value,
-            impact_summary=l.impact_summary,
-            created_at=l.created_at,
-        )
-        for l in logs
-    ]

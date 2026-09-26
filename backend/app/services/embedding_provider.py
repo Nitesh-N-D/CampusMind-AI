@@ -24,6 +24,9 @@ LOCAL_DIM = 384
 
 class EmbeddingProvider(abc.ABC):
     dimension: int
+    # False when vectors only capture word overlap (the local hashing
+    # vectorizer) - retrieval then leans on keyword scoring instead.
+    is_semantic: bool = True
 
     @abc.abstractmethod
     async def embed(self, text: str) -> List[float]:
@@ -36,6 +39,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     embedding model in production."""
 
     dimension = LOCAL_DIM
+    is_semantic = False
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"[a-zA-Z0-9%]+", text.lower())
@@ -57,6 +61,8 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
+        # Without a key every call falls back to the local vectorizer.
+        self.is_semantic = bool(api_key)
         self.model = model or "gemini-embedding-2"
 
     async def embed(self, text: str) -> List[float]:
@@ -99,6 +105,8 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
+        # Without a key every call falls back to the local vectorizer.
+        self.is_semantic = bool(api_key)
         self.model = model or "text-embedding-3-small"
 
     async def embed(self, text: str) -> List[float]:

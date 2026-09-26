@@ -1,6 +1,6 @@
 import { useThemeStore } from "@/lib/themeStore";
 
-export function ThemeToggle({ dark = false }: { dark?: boolean }) {
+export function ThemeToggle() {
   const { theme, toggle } = useThemeStore();
   const isDark = theme === "dark";
 
@@ -9,9 +9,7 @@ export function ThemeToggle({ dark = false }: { dark?: boolean }) {
       onClick={toggle}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       title={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-        dark ? "text-paper-100 hover:bg-white/10" : "text-ink-700 hover:bg-paper-200"
-      }`}
+      className="w-9 h-9 flex items-center justify-center rounded-full transition-colors text-ink-700 hover:bg-paper-200"
     >
       {isDark ? (
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">

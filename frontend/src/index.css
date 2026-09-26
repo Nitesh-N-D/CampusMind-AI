@@ -31,6 +31,13 @@
   --color-surface-2: #f6f4ee;
   --color-surface-hover: #ede9dd;
 
+  /* Text that sits on a navy fill (sidebar, primary buttons, user chat
+     bubbles). Constant across themes because navy fills stay dark. */
+  --color-on-navy: #fbfaf6;
+  --color-on-navy-muted: #c3c8dc;
+  /* The wordmark/logo colour on page backgrounds; flips with the theme. */
+  --color-brand-ink: #14213d;
+
   --color-violet-600: #4b4696;
   --color-violet-500: #5b57d6;
   --color-violet-100: #e9e8fb;
@@ -100,6 +107,29 @@ html {
   --color-ink-400: #6d7091;
   --color-ink-300: #4c4f6b;
 
+  /* Brighter navy so primary buttons and chat bubbles still stand out from
+     dark surfaces. navy-900 (the sidebar rail) stays constant. */
+  --color-navy-700: #2f4278;
+  --color-navy-600: #3a4f8c;
+  --color-navy-500: #4a60a3;
+
+  --color-brand-ink: #f6f4ee;
+
+  /* Trust-tier and violet *text* colours are dark in the light palette;
+     these lighter tints keep them readable (WCAG AA) on dark surfaces.
+     The -600 fills are unchanged and always carry white text. */
+  --color-seal-teal-900: #a6e6c7;
+  --color-seal-teal-700: #7fd4ab;
+  --color-seal-teal-100: #1f7a5c55;
+  --color-seal-amber-900: #f5d49e;
+  --color-seal-amber-700: #ecb976;
+  --color-seal-amber-100: #c97d2e55;
+  --color-seal-coral-900: #f8bab3;
+  --color-seal-coral-700: #f2958b;
+  --color-seal-coral-100: #c1443b55;
+  --color-violet-600: #b0adf7;
+  --color-violet-500: #817df0;
+
   --color-seal-teal-50: #0d3d2e33;
   --color-seal-amber-50: #5c3a0d33;
   --color-seal-coral-50: #5c171233;
@@ -118,7 +148,7 @@ body {
 
 ::selection {
   background: var(--color-violet-100);
-  color: var(--color-navy-900);
+  color: var(--color-ink-950);
 }
 
 :focus-visible {

@@ -27,8 +27,8 @@ explains how to graduate off it.
 ## Multi-tenancy model
 
 Every table that holds college-specific data carries a `college_id` foreign
-key (`documents`, `document_chunks`, `chat_sessions`, `notifications`,
-`document_conflicts`, `search_logs`, ...). Every query in `app/api/*.py` and
+key (`documents`, `document_chunks`, `chat_sessions`, `document_conflicts`,
+`search_logs`, `login_events`, ...). Every query in `app/api/*.py` and
 `app/rag/pipeline.py` filters by the **authenticated user's** `college_id` -
 never a client-supplied one. This is what
 `tests/test_auth.py::test_token_from_one_college_cannot_see_another_colleges_data`
@@ -36,10 +36,20 @@ verifies: College B's admin token returns zero documents from College A.
 
 Signup is domain-restricted: `POST /api/auth/register-college` captures an
 `official_domain` (e.g. `mitindia.edu`), and `POST /api/auth/register-student`
-rejects any email whose domain doesn't match that college's domain. Roles
-(`admin` / `student`) are stored server-side on the `users` row and
-re-checked via `require_role()` on every protected endpoint - the frontend
-never gets to assert its own role.
+rejects any email whose domain doesn't match that college's domain. Faculty
+are matched only against the college's admin-set `faculty_domain`; while it
+is unset, faculty signup at that college is closed. Roles
+(`admin` / `student` / `faculty`) are stored server-side on the `users` row
+and re-checked via `require_role()` on every protected endpoint - the
+frontend never gets to assert its own role. The document library, upload,
+conflicts, analytics, login log, and settings endpoints are admin-only;
+students and faculty reach documents only through chat citations.
+
+Every successful student/faculty login and registration writes a
+`login_events` row (admin logins are not recorded). `GET
+/api/admin/login-events` returns them newest first, filtered by role and a
+`[start, end)` date range, paginated, and always scoped to the admin's own
+college.
 
 ## RAG pipeline (`app/rag/pipeline.py`)
 
@@ -51,11 +61,15 @@ Query embedding (embedding provider abstraction)
   |
   v
 Candidate retrieval, scoped to college_id
-  |-- BM25 keyword search over chunk text
+  |-- BM25 over stemmed content terms of title + section heading + text
+  |   (rag/text.py: tokenizer, stopwords, light suffix folding)
+  |-- Query-term coverage (share of the question's terms a chunk contains)
   `-- Cosine similarity over chunk embeddings
-  |
+  |   chunks matching no query term are dropped unless a real
+  |   semantic embedder rates them a close paraphrase
   v
-Score fusion (weighted hybrid rank)
+Score fusion: keyword = 0.6 BM25 + 0.4 coverage; semantic weight
+depends on the provider (lower for the offline local embedder)
   |
   v
 Trust scoring per chunk's parent document      (Feature 1 - trust_engine.py)
@@ -64,11 +78,16 @@ Trust scoring per chunk's parent document      (Feature 1 - trust_engine.py)
 Temporal weighting                              (Feature 2 - temporal_engine.py)
   |   superseded/expired docs stay eligible but are heavily
   |   down-weighted rather than hard-excluded, so conflict
-  |   detection and "what changed" can still see them
+  |   detection can still see them
+  v
+Relative cutoff: drop candidates below half the best score
+(the superseding pair is kept); no candidates -> abstain
+  |
   v
 Conflict detection across top candidates        (Feature 3 - conflict_engine.py)
-  |   persists a DocumentConflict row + admin notification
-  |   the first time a topic-level contradiction is found
+  |   persists a DocumentConflict row the first time a
+  |   topic-level contradiction is found; it appears on the
+  |   admin Conflicts page
   v
 Context construction (top-K chunks, citations attached)
   |
@@ -98,35 +117,36 @@ end-to-end, not when you read each feature's code in isolation.
 ## Ingestion pipeline (`app/ingestion/pipeline.py`)
 
 ```
-PDF upload (admin only, RBAC-checked)
+Upload (admin only, RBAC-checked)
   |
   v
-File type + size validation
+Validation: supported extension, non-empty, size limit, magic bytes
+match the extension (renamed files rejected), `supersedes_id` must
+belong to the same college
   |
   v
-Text extraction (pypdf) + OCR fallback for scanned pages
+Text extraction (app/ingestion/extractors.py), one function per format:
+  PDF   pypdf per page; pages with little text have their embedded
+        images OCR'd (RapidOCR)
+  Word  python-docx, split into sections by heading; tables become
+        "Header: value" sentences
+  Excel openpyxl, one section per sheet, rows as sentences
+  CSV   sniffed delimiter, utf-8/BOM/utf-16/cp1252
+  Text  split on markdown or title-like headings
+  Image RapidOCR
   |
   v
-Heading detection, page-preserving chunking
+Heading-aware chunking; PDFs keep page numbers, other formats
+cite the section (heading or sheet name)
   |
   v
-Embedding generation per chunk
+Embedding generation per chunk (title + heading + text)
   |
   v
 Trust scoring (officiality, verification, recency, doc type)
   |
   v
-Event/deadline extraction -> timeline entries              (Feature 6)
-  |
-  v
-If `supersedes_id` set: diff old vs new, generate
-"what changed" impact summary, archive the old version      (Feature 7)
-  |
-  v
-Notifications: broadcast "new document" (students) or
-"regulation updated" with the diff (students); conflict_engine
-separately notifies admins if a contradiction is found on
-the next relevant chat query
+If `supersedes_id` set: archive the old version (same college only)
   |
   v
 status = READY (or FAILED with a stored, user-facing
@@ -136,16 +156,23 @@ reported, never allowed to bubble up as a raw 500)
 
 ## Data model (selected tables)
 
-- `colleges` - one row per tenant workspace, holds `official_domain`
-- `users` - `role` (admin/student), `college_id`, personalization fields
+- `colleges` - one row per tenant workspace, holds `official_domain` and
+  the optional admin-set `faculty_domain`
+- `users` - `role` (admin/student/faculty), `college_id`, personalization fields
 - `documents` - trust/temporal/versioning metadata, `supersedes_id` self-FK
 - `document_chunks` - page/section-tagged text + embedding vector
+  (`page_number` is null for non-paginated formats)
 - `document_conflicts` - persisted contradictions awaiting admin resolution
-- `change_logs` - old value -> new value -> impact summary, per topic
-- `timeline_events` - extracted dates, categorized, filterable
-- `notifications` - `target_role` nullable (null = everyone), college-scoped
-- `search_logs` - query + top confidence, feeds Knowledge Health's
-  low-confidence-topics metric
+- `search_logs` - question + top confidence, feeds Knowledge Health's
+  low-confidence-topics metric and the most-asked list
+- `login_events` - user, role, `login`/`register`, timestamp; the admin
+  login log
+
+There is no Alembic. Tables are created with `create_all`, and
+`app/db/migrations.py` runs at startup to add columns introduced since a
+database was created and to drop the tables of removed features
+(`notifications`, `extracted_events`, `document_change_logs`), deleting any
+rows they still hold.
 
 Full column-level detail is readable directly in `backend/app/db/models.py`
 - it's the single source of truth and this document intentionally doesn't

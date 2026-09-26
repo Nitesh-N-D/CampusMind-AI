@@ -4,20 +4,18 @@ import { useAuthStore } from "@/lib/authStore";
 import { useThemeStore } from "@/lib/themeStore";
 import { RequireAuth, RedirectIfAuthed } from "@/components/RouteGuards";
 import { ToastContainer } from "@/components/ToastContainer";
-import { CommandPalette } from "@/components/CommandPalette";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import RegisterCollege from "@/pages/RegisterCollege";
 import RegisterStudent from "@/pages/RegisterStudent";
 import Chat from "@/pages/Chat";
-import SearchPage from "@/pages/Search";
-import Timeline from "@/pages/Timeline";
-import Documents from "@/pages/Documents";
-import WhatChanged from "@/pages/WhatChanged";
 import Profile from "@/pages/Profile";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminConflicts from "@/pages/AdminConflicts";
+import AdminDocuments from "@/pages/AdminDocuments";
+import AdminLogins from "@/pages/AdminLogins";
+import AdminSettings from "@/pages/AdminSettings";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import NotFound from "@/pages/NotFound";
@@ -34,7 +32,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastContainer />
-      <CommandPalette />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route
@@ -71,38 +68,6 @@ export default function App() {
           }
         />
         <Route
-          path="/search"
-          element={
-            <RequireAuth>
-              <SearchPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/timeline"
-          element={
-            <RequireAuth>
-              <Timeline />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/documents"
-          element={
-            <RequireAuth>
-              <Documents />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/what-changed"
-          element={
-            <RequireAuth>
-              <WhatChanged />
-            </RequireAuth>
-          }
-        />
-        <Route
           path="/profile"
           element={
             <RequireAuth>
@@ -119,10 +84,34 @@ export default function App() {
           }
         />
         <Route
+          path="/admin/documents"
+          element={
+            <RequireAuth role="admin">
+              <AdminDocuments />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/admin/conflicts"
           element={
             <RequireAuth role="admin">
               <AdminConflicts />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/logins"
+          element={
+            <RequireAuth role="admin">
+              <AdminLogins />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <RequireAuth role="admin">
+              <AdminSettings />
             </RequireAuth>
           }
         />

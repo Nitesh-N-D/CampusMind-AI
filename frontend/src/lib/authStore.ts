@@ -21,31 +21,39 @@ const STORAGE_KEYS = {
   fullName: "cm_full_name",
 } as const;
 
-export const useAuthStore = create<AuthState>((set) => ({
+type SessionFields = Omit<AuthState, "hydrate" | "setSession" | "logout">;
+
+const SIGNED_OUT: SessionFields = {
   token: null,
   role: null,
   collegeId: null,
   collegeName: null,
   fullName: null,
   isAuthenticated: false,
+};
 
-  hydrate: () => {
-    const token = localStorage.getItem(STORAGE_KEYS.token);
-    const role = localStorage.getItem(STORAGE_KEYS.role) as "admin" | "student" | "faculty" | null;
-    const collegeId = localStorage.getItem(STORAGE_KEYS.collegeId);
-    const collegeName = localStorage.getItem(STORAGE_KEYS.collegeName);
-    const fullName = localStorage.getItem(STORAGE_KEYS.fullName);
-    if (token && role) {
-      set({
-        token,
-        role,
-        collegeId: collegeId ? Number(collegeId) : null,
-        collegeName,
-        fullName,
-        isAuthenticated: true,
-      });
-    }
-  },
+function readStoredSession(): SessionFields {
+  const token = localStorage.getItem(STORAGE_KEYS.token);
+  const role = localStorage.getItem(STORAGE_KEYS.role) as "admin" | "student" | "faculty" | null;
+  if (!token || !role) return SIGNED_OUT;
+  const collegeId = localStorage.getItem(STORAGE_KEYS.collegeId);
+  return {
+    token,
+    role,
+    collegeId: collegeId ? Number(collegeId) : null,
+    collegeName: localStorage.getItem(STORAGE_KEYS.collegeName),
+    fullName: localStorage.getItem(STORAGE_KEYS.fullName),
+    isAuthenticated: true,
+  };
+}
+
+// The session is read synchronously at startup so route guards see it on
+// the very first render - otherwise a refresh on a protected page would
+// bounce through /login and lose the deep link.
+export const useAuthStore = create<AuthState>((set) => ({
+  ...readStoredSession(),
+
+  hydrate: () => set(readStoredSession()),
 
   setSession: (session) => {
     localStorage.setItem(STORAGE_KEYS.token, session.access_token);
@@ -65,13 +73,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
-    set({
-      token: null,
-      role: null,
-      collegeId: null,
-      collegeName: null,
-      fullName: null,
-      isAuthenticated: false,
-    });
+    set(SIGNED_OUT);
   },
 }));

@@ -7,14 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import admin, auth, chat, documents, notifications, profile, search, timeline
+from app.api import admin, auth, chat, documents, profile
 from app.core.config import settings
 from app.core.logging_config import configure_logging, logger
 from app.db.database import Base, engine
+from app.db.migrations import apply_migrations
 
 configure_logging(level="DEBUG" if settings.environment == "development" else "INFO")
 
 Base.metadata.create_all(bind=engine)
+apply_migrations(engine)
 
 app = FastAPI(
     title="CampusMind AI API",
@@ -133,11 +135,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
-app.include_router(search.router)
-app.include_router(timeline.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
-app.include_router(notifications.router)
 
 
 @app.get("/api/health")

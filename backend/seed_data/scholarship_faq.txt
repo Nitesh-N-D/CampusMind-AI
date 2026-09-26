@@ -1,0 +1,14 @@
+# Scholarship FAQ 2025-26
+
+DEMO DATA - fictional sample document for CampusMind AI.
+
+# Merit scholarship
+
+Students with a CGPA of 8.5 or above are eligible for the merit scholarship.
+The merit scholarship application deadline is 15 October 2025.
+
+# First-generation graduate scholarship
+
+Students who are the first in their family to attend college receive a full
+tuition fee waiver. Submit the first-graduate certificate to the scholarship
+cell in the admin block.

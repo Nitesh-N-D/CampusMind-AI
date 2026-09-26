@@ -1,12 +1,21 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+DOMAIN_PATTERN = re.compile(r"^(?=.{3,255}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 
 
 # ---------- Auth / Colleges ----------
 
 class CollegeCreate(BaseModel):
+    # Unknown fields are rejected rather than silently dropped, so there is
+    # no way to smuggle `faculty_domain` in at registration time - it can
+    # only be set later from the admin settings screen.
+    model_config = ConfigDict(extra="forbid")
+
     college_name: str = Field(..., min_length=2, max_length=255)
     official_domain: str = Field(..., min_length=3, max_length=255)
     admin_full_name: str
@@ -111,22 +120,6 @@ class ProfileUpdate(BaseModel):
         return cleaned
 
 
-class ChangeLogOut(BaseModel):
-    id: int
-    old_document_id: int
-    old_document_title: str
-    new_document_id: int
-    new_document_title: str
-    topic: str
-    old_value: Optional[str]
-    new_value: Optional[str]
-    impact_summary: Optional[str]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class ProfileOut(BaseModel):
     id: int
     email: str
@@ -166,6 +159,7 @@ class DocumentOut(BaseModel):
     status: str
     is_demo_data: bool
     page_count: int
+    file_type: str
     processing_error: Optional[str] = None
     created_at: datetime
 
@@ -267,3 +261,45 @@ class ConflictOut(BaseModel):
 class ConflictResolve(BaseModel):
     authoritative_document_id: int
     resolution_note: Optional[str] = None
+
+
+class WorkspaceSettingsOut(BaseModel):
+    college_name: str
+    official_domain: str
+    faculty_domain: Optional[str] = None
+
+
+class FacultyDomainUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # null (or an empty string) clears it, which closes faculty signup again
+    faculty_domain: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("faculty_domain")
+    @classmethod
+    def _clean_domain(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip().lower().lstrip("@")
+        if v == "":
+            return None
+        if not DOMAIN_PATTERN.match(v):
+            raise ValueError("Enter a valid email domain, like faculty.yourcollege.edu.")
+        return v
+
+
+class LoginEventOut(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    email: str
+    role: str
+    event_type: str
+    created_at: datetime
+
+
+class LoginEventPage(BaseModel):
+    items: List[LoginEventOut]
+    total: int
+    page: int
+    page_size: int

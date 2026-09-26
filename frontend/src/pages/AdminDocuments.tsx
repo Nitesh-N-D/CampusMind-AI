@@ -3,9 +3,18 @@ import { AppShell } from "@/layouts/AppShell";
 import { Badge, Button, Card, ErrorBanner, PageHeader, SkeletonList, EmptyState } from "@/components/ui";
 import { Seal } from "@/components/Seal";
 import { api, ApiError, type DocumentOut } from "@/lib/api";
-import { useAuthStore } from "@/lib/authStore";
 import { toastError, toastSuccess } from "@/lib/toastStore";
 import { UploadForm } from "@/pages/DocumentsUploadForm";
+
+const FILE_TYPE_LABEL: Record<DocumentOut["file_type"], string> = {
+  pdf: "PDF",
+  word: "Word",
+  excel: "Excel",
+  csv: "CSV",
+  text: "Text",
+  image: "Image",
+  unknown: "File",
+};
 
 const STATUS_TONE: Record<string, "neutral" | "teal" | "amber" | "coral"> = {
   ready: "teal",
@@ -15,8 +24,7 @@ const STATUS_TONE: Record<string, "neutral" | "teal" | "amber" | "coral"> = {
   archived: "neutral",
 };
 
-export default function Documents() {
-  const role = useAuthStore((s) => s.role);
+export default function AdminDocuments() {
   const [docs, setDocs] = useState<DocumentOut[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,17 +70,13 @@ export default function Documents() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Knowledge base"
+        eyebrow="Admin"
         title="Documents"
-        description="Every official source CampusMind AI is allowed to answer from, with its current trust score and status."
-        actions={
-          role === "admin" && (
-            <Button onClick={() => setShowUpload((v) => !v)}>{showUpload ? "Close" : "Upload document"}</Button>
-          )
-        }
+        description="Every official source CampusMind AI is allowed to answer from, with its trust score and status. Students and faculty only see these through cited chat answers."
+        actions={<Button onClick={() => setShowUpload((v) => !v)}>{showUpload ? "Close" : "Upload documents"}</Button>}
       />
 
-      {showUpload && role === "admin" && (
+      {showUpload && (
         <UploadForm
           existingDocs={docs ?? []}
           onUploaded={(doc) => {
@@ -87,17 +91,9 @@ export default function Documents() {
 
       {!loading && !error && docs?.length === 0 && (
         <EmptyState
-          title={role === "admin" ? "Upload your first official document" : "No documents yet"}
-          body={
-            role === "admin"
-              ? "Start with an academic regulation or the current exam schedule - CampusMind AI can only answer from what's uploaded here."
-              : "Once your admin uploads official documents, they'll appear here and become searchable in chat."
-          }
-          action={
-            role === "admin" && (
-              <Button onClick={() => setShowUpload(true)}>Upload document</Button>
-            )
-          }
+          title="Upload your first official document"
+          body="Start with an academic regulation or the current exam schedule - CampusMind AI can only answer from what's uploaded here. PDF, Word, Excel, CSV, text, and image files are supported."
+          action={<Button onClick={() => setShowUpload(true)}>Upload documents</Button>}
         />
       )}
 
@@ -114,11 +110,13 @@ export default function Documents() {
                   {doc.is_demo_data && <Badge tone="violet">Demo data</Badge>}
                 </div>
                 <p className="text-xs text-ink-400 mt-2" style={{ fontFamily: "var(--font-mono)" }}>
-                  {doc.document_type.replace("_", " ")}
+                  {FILE_TYPE_LABEL[doc.file_type]} - {doc.document_type.replace("_", " ")}
                   {doc.department ? ` - ${doc.department}` : ""}
                   {doc.academic_year ? ` - ${doc.academic_year}` : ""}
                   {" - v"}
-                  {doc.version} - {doc.page_count} page{doc.page_count === 1 ? "" : "s"}
+                  {doc.version} - {doc.page_count}{" "}
+                  {doc.file_type === "pdf" ? "page" : doc.file_type === "excel" ? "sheet" : "section"}
+                  {doc.page_count === 1 ? "" : "s"}
                 </p>
                 {doc.effective_date && (
                   <p className="text-xs text-ink-400 mt-1">
@@ -129,18 +127,16 @@ export default function Documents() {
                   <p className="text-xs text-seal-coral-700 mt-1">{doc.processing_error}</p>
                 )}
               </div>
-              {role === "admin" && (
-                <div className="flex sm:flex-col gap-2 shrink-0">
-                  {!doc.is_verified && (
-                    <Button variant="secondary" className="!py-1.5 text-xs" onClick={() => handleVerify(doc.id)}>
-                      Mark verified
-                    </Button>
-                  )}
-                  <Button variant="danger" className="!py-1.5 text-xs" onClick={() => handleDelete(doc.id)}>
-                    Delete
+              <div className="flex sm:flex-col gap-2 shrink-0">
+                {!doc.is_verified && (
+                  <Button variant="secondary" className="!py-1.5 text-xs" onClick={() => handleVerify(doc.id)}>
+                    Mark verified
                   </Button>
-                </div>
-              )}
+                )}
+                <Button variant="danger" className="!py-1.5 text-xs" onClick={() => handleDelete(doc.id)}>
+                  Delete
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

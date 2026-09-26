@@ -2,10 +2,10 @@
 
 AI-powered smart college assistant. CampusMind AI answers student and staff
 questions using a college's own official documents - regulations, circulars,
-timetables, exam schedules, placement notices - with page-level citations
-and a visible, honestly-labeled trust score. It never invents a fact it
-can't cite, and when two official sources disagree, it says so instead of
-silently picking one.
+timetables, exam schedules, placement notices - with page- or section-level
+citations and a visible, honestly-labeled trust score. It never invents a
+fact it can't cite, and when two official sources disagree, it says so
+instead of silently picking one.
 
 It's built as **multi-tenant SaaS**: any college admin can spin up their own
 private workspace in minutes, restricted to their own official email domain,
@@ -20,29 +20,25 @@ without touching code or infrastructure.
 | **Source-Trust Engine** | Every document gets a transparent 0-100 score from officiality, verification status, recency, and document type - shown on every citation, never presented as ground truth. |
 | **Temporal-aware retrieval** | Knows which academic year/semester is current and heavily deprioritizes (not just hides) superseded documents. |
 | **Conflict detection** | When two official sources disagree on the same regulated fact (e.g. attendance %), the assistant surfaces both, cites the newer one as *suggested*, and queues it for admin resolution - it never silently guesses. |
-| **Personalized context** | Students set department/year/semester once; retrieval ranks around what's relevant to them. Fully editable and deletable - see `PRIVACY` in `SECURITY.md`. |
-| **Separate student/faculty/admin experience** | Faculty get their own signup path, their own chat suggestions (circular summaries, curriculum changes), and their own notification stream - distinct from students and from the admin command center. |
+| **Personalized context** | Students set department/year/semester once; retrieval ranks around what's relevant to them. Fully editable and deletable - see `docs/SECURITY.md`. |
+| **Role separation** | Students and faculty get a focused chat-first experience; only admins see and manage the document library. Students and faculty see documents only through cited answers. |
+| **Faculty-domain gating** | Faculty can only sign up with an email on a faculty domain the admin has set in Settings. Until an admin sets one, faculty signup at that college is closed with a clear message. |
+| **Multi-format ingestion** | PDF, Word (.docx), Excel (.xlsx), CSV, plain text, and images (.jpg/.png). Scanned PDF pages and photos of notices are read with on-device OCR (RapidOCR - no system install). Renamed, corrupt, empty, or unsupported files are rejected with a specific message. |
+| **Hybrid retrieval** | BM25 over stemmed terms (title + section heading + text), query-term coverage, and embedding similarity, trust- and recency-weighted. Unrelated questions abstain instead of citing a loosely related document. |
 | **AI Campus Copilot** | Handles task-style requests ("summarize the latest placement circular", "give me a checklist for registration") not just lookup questions. |
-| **Deadline & event intelligence** | Extracts dates from uploaded documents into a filterable campus timeline. |
-| **"What changed?"** | Diffs superseded regulations against their replacement and states the practical impact in one sentence. |
-| **Multi-modal ingestion** | PDF text + OCR fallback, page/section-preserving chunking, page-level citations. |
-| **Hybrid search** | BM25 keyword + embedding-based semantic search, trust-weighted ranking. |
-| **Admin command center** | Knowledge Health score, conflict queue, usage analytics, verification workflow. |
+| **Admin command center** | Knowledge Health score, conflict queue, usage analytics, verification workflow, and a login-activity log. |
+| **Login analytics** | Admins see every student and faculty sign-in and registration (name, role, time), filterable by role and date range, paginated, and scoped to their own college. |
 
 ---
 
-## The 5 signature extras
-
-Beyond the 10 core features, these make it feel like a real product rather
-than a class-project chatbot:
+## Extras
 
 | Feature | What it does |
 |---|---|
-| **"What changed?" page** | A dedicated, student-visible diff view (not admin-only) showing every regulation update side-by-side with its practical impact - closes a real gap where this data existed on the backend but had no UI. |
-| **Command palette (⌘K / Ctrl+K)** | Jump to any page or run an action (new chat, sign out) from anywhere, keyboard-first, the same pattern as Linear/Notion/Vercel. |
+| **Account menu** | One avatar menu in the top-right of every signed-in page for profile, light/dark theme, and sign-out. |
 | **Voice input** | Ask questions by speaking, in English, Tamil, or Hindi, via the browser's native Web Speech API - degrades gracefully with a clear message on unsupported browsers rather than a broken button. |
 | **Conversation export** | Download any chat as a clean Markdown file with citations and confidence scores intact - useful for keeping a record of an official answer. |
-| **Bulk document upload** | Drag and drop dozens of PDFs at once for admin onboarding, with per-file title editing, sequential upload (kind to free-tier AI rate limits), and live per-file status. |
+| **Bulk document upload** | Drag and drop many files at once, in any supported format, with per-file title editing, sequential upload (kind to free-tier AI rate limits), and live per-file status including the reason a file failed. |
 
 ---
 
@@ -60,8 +56,8 @@ python3 -m uvicorn app.main:app --reload --port 8000
 
 The backend runs on **SQLite by default** - no database server to install.
 It boots and works even with zero API keys configured, using a clearly
-labeled offline mode (see `AI_PROVIDER=mock` behavior in `RAG.md`) so you
-can develop the UI and pipeline without spending anything.
+labeled offline mode (`AI_PROVIDER=mock`) so you can develop the UI and
+pipeline without spending anything.
 
 To get real AI-generated answers, add a free-tier Google Gemini key to `.env`:
 
@@ -88,14 +84,18 @@ Open <http://localhost:5173>.
 
 1. Visit `/register-college`, create a workspace with a real domain (e.g.
    `mitindia.edu`) - you become its first admin.
-2. Upload the sample PDFs in `backend/seed_data/` (clearly marked demo data)
-   from the Documents page: upload `attendance_reg_2025.pdf` first, then
-   upload `attendance_reg_2026.pdf` and set "Supersedes" to the first one.
-3. Log out, register a student with an email on the same domain.
-4. Ask: *"What is the minimum attendance requirement?"* - watch the
+2. Upload the sample files in `backend/seed_data/` (clearly marked demo data)
+   from **Documents**: upload `attendance_reg_2025.pdf` first, then upload
+   `attendance_reg_2026.pdf` and set "Supersedes" to the first one. The Word,
+   Excel, CSV, text, and image samples show multi-format ingestion
+   (regenerate them with `python seed_data/make_format_samples.py`).
+3. Optionally set a faculty domain under **Settings** to open faculty signup.
+4. Sign out, register a student with an email on the same domain.
+5. Ask: *"What is the minimum attendance requirement?"* - watch the
    assistant flag the conflict and cite both sources.
-5. Back in the admin panel, resolve the conflict, check the Knowledge
-   Health score, and look at the Timeline for extracted dates.
+6. Back in the admin panel, resolve the conflict, check the Knowledge
+   Health score, and see the student's registration and sign-in under
+   **Login activity**.
 
 ---
 
@@ -105,7 +105,8 @@ Open <http://localhost:5173>.
 campusmind-ai/
   backend/     FastAPI app - RAG pipeline, auth, ingestion, admin APIs
   frontend/    React + Vite + TypeScript + Tailwind SPA
-  docs/        ARCHITECTURE.md, SETUP.md, SECURITY.md, RAG.md, DEPLOYMENT.md
+  docs/        ARCHITECTURE.md, SETUP.md, SECURITY.md, DEPLOYMENT.md,
+               PROJECT_ROADMAP.md, PROJECT_STATUS.md
 ```
 
 See `docs/ARCHITECTURE.md` for the full RAG pipeline diagram and data model,
@@ -115,11 +116,12 @@ See `docs/ARCHITECTURE.md` for the full RAG pipeline diagram and data model,
 ## Status
 
 This is a working prototype covering the full core loop (auth, multi-tenant
-isolation, three roles - student/faculty/admin, ingestion, RAG chat, trust
-scoring, temporal retrieval, conflict detection, notifications, search,
-timeline, admin dashboard, light/dark theming) with a 37-test backend suite
-(`backend/tests/`) covering auth, RBAC across all three roles, tenant
-isolation, and the RAG/conflict pipeline. Not yet built: streaming
-responses, full multilingual answer generation (the language parameter is
-wired through the API but needs a real Gemini key to actually translate),
-and a production deployment. See `docs/PROJECT_ROADMAP.md`.
+isolation, three roles - student/faculty/admin - with faculty-domain gating,
+multi-format ingestion with OCR, RAG chat, trust scoring, temporal
+retrieval, conflict detection, admin dashboard, login analytics, light/dark
+theming) with a 91-test backend suite (`backend/tests/`) covering auth,
+RBAC across all three roles, tenant isolation, ingestion of every supported
+format, retrieval quality, login analytics, and the RAG/conflict pipeline.
+Not yet built: streaming responses, and multilingual answers without an AI
+provider (the language choice needs a real Gemini/OpenAI/Claude key to
+actually translate). See `docs/PROJECT_ROADMAP.md`.

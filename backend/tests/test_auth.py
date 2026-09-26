@@ -86,24 +86,31 @@ def test_unauthenticated_request_rejected(client):
 
 
 def test_faculty_signup_and_access(client, college_and_admin):
-    _, domain = college_and_admin
+    admin_token, domain = college_and_admin
+    resp = client.put(
+        "/api/admin/settings/faculty-domain",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"faculty_domain": f"staff.{domain}"},
+    )
+    assert resp.status_code == 200, resp.text
+
     resp = client.post(
         "/api/auth/register-student",
         json={
-            "email": f"prof@{domain}",
+            "email": f"prof@staff.{domain}",
             "full_name": "Prof. Rao",
             "password": "pass1234",
             "role": "faculty",
             "department": "CSE",
         },
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["role"] == "faculty"
     faculty_token = body["access_token"]
 
     # Faculty can chat like a student...
-    resp = client.get("/api/documents", headers={"Authorization": f"Bearer {faculty_token}"})
+    resp = client.get("/api/chat/sessions", headers={"Authorization": f"Bearer {faculty_token}"})
     assert resp.status_code == 200
 
     # ...but cannot access admin-only routes.
@@ -133,6 +140,9 @@ def test_invalid_role_rejected(client, college_and_admin):
         },
     )
     assert resp.status_code == 400
+
+
+def test_token_from_one_college_cannot_see_another_colleges_data(client):
     # College A
     r = client.post(
         "/api/auth/register-college",

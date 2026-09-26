@@ -39,7 +39,11 @@ database files - you won't accidentally commit secrets.
    tells SQLAlchemy which driver to use. Keep this string handy for Step 3.
 
 You don't need to create any tables manually - the backend creates them
-automatically on first boot via `Base.metadata.create_all`.
+automatically on first boot via `Base.metadata.create_all`, then runs
+`app/db/migrations.py`. On a database created by an older version, that
+step adds any new columns and **drops the tables of removed features**
+(`notifications`, `extracted_events`, `document_change_logs`), deleting
+their rows. Back up first if you want to keep that data.
 
 ## Step 3 - Backend (Render)
 
@@ -66,15 +70,12 @@ automatically on first boot via `Base.metadata.create_all`.
    | `CLOUDINARY_API_KEY` | from your Cloudinary dashboard (optional) |
    | `CLOUDINARY_API_SECRET` | from your Cloudinary dashboard (optional) |
 
-5. Also add the Postgres driver to `backend/requirements.txt` before
-   deploying (SQLite, the local default, doesn't need it, but production
-   Postgres does):
-   ```
-   psycopg[binary]==3.2.3
-   ```
-   Commit and push this change.
-6. Click **Create Web Service**. Wait for the build and deploy to finish
-   (~3-5 minutes on the free tier).
+5. The Postgres driver (`psycopg[binary]`) is already in
+   `backend/requirements.txt`, so nothing to add.
+6. Click **Create Web Service**. Wait for the build and deploy to finish.
+   The OCR dependencies (`rapidocr-onnxruntime`, which pulls in
+   `onnxruntime` and `opencv-python`) make this a fairly large install, so
+   the first build takes longer than a plain FastAPI app.
 7. Once live, visit `https://your-service.onrender.com/api/health` to
    confirm it responds with `{"status":"ok",...}`.
 
@@ -82,6 +83,12 @@ automatically on first boot via `Base.metadata.create_all`.
 of inactivity. The first request after idle takes ~30-50 seconds to wake
 up - normal, not a bug. Upgrade to a paid instance if that matters for your
 users.
+
+**OCR note**: the OCR model loads the first time an image or scanned PDF
+is uploaded after each start (several seconds locally), then stays in
+memory. Memory use on Render's smallest instance hasn't been measured for
+this build; if image uploads fail there with out-of-memory errors, move to
+a larger instance.
 
 ## Step 4 - Frontend (Vercel)
 
@@ -114,17 +121,18 @@ error.
 ## Step 6 - Verify the live deployment
 
 Visit your Vercel URL and repeat the demo flow from `SETUP.md` step 4 -
-register a college, upload a document, sign up a student, ask a question.
+register a college, upload documents in a few formats, sign up a student,
+ask a question, then check **Login activity** as the admin.
 If everything in that walkthrough works against your live URLs, you're
 fully deployed.
 
 ## Step 7 - SEO finishing touches
 
 `frontend/index.html`, `frontend/public/robots.txt`, and
-`frontend/public/sitemap.xml` all reference a placeholder domain
-(`https://campusmind.ai`) with a comment marking it - find-and-replace
-every occurrence with your real Vercel (or custom) domain, commit, and
-redeploy.
+`frontend/public/sitemap.xml` currently point at
+`https://campus-mind-ai-delta.vercel.app`. If you deploy under a different
+Vercel (or custom) domain, find-and-replace every occurrence with yours,
+commit, and redeploy.
 
 ### Google Search Console
 

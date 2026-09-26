@@ -101,7 +101,8 @@ export default function AdminConflicts() {
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Optional resolution note for the record..."
-                  className="w-full mt-3 h-10 text-sm border border-line-strong rounded-[var(--radius-control)] px-3 outline-none focus:border-navy-700"
+                  aria-label="Resolution note"
+                  className="w-full mt-3 h-10 text-sm bg-surface text-ink-900 placeholder:text-ink-400 border border-line-strong rounded-[var(--radius-control)] px-3 outline-none focus:border-violet-500"
                 />
               </Card>
             );

@@ -199,7 +199,7 @@ export default function AdminDashboard() {
             </ul>
           )}
           <Link
-            to="/documents"
+            to="/admin/documents"
             className="inline-block mt-5 text-sm font-medium text-violet-600 hover:underline"
           >
             Manage all documents &rarr;

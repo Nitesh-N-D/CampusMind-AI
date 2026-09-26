@@ -1,24 +1,69 @@
+# ================================
 # Python
+# ================================
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 venv/
 .venv/
 *.egg-info/
 .pytest_cache/
 
+# ================================
 # Backend runtime data
+# ================================
 backend/campusmind.db
 backend/test_campusmind.db
 backend/uploads/
 backend/.env
 
-# Node
+# ================================
+# Node / Frontend
+# ================================
 node_modules/
 frontend/dist/
 frontend/.env
 
-# Editor/OS
-.DS_Store
+# ================================
+# Claude Code
+# ================================
+# Keep shared Claude Code configuration,
+# skills, commands, agents, and CLAUDE.md in Git.
+
+# Machine/user-specific Claude settings
+.claude/settings.local.json
+
+# Claude local/runtime data
+.claude/*.local.*
+
+CLAUDE.md
+# ================================
+# Editor / OS
+# ================================
 .vscode/
+.DS_Store
+Thumbs.db
+
+# ================================
+# Logs / temporary files
+# ================================
 *.log
+*.tmp
+*.temp
+
+# ================================
+# Environment / secrets
+# ================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ================================
+# Build / cache
+# ================================
+dist/
+build/
+coverage/

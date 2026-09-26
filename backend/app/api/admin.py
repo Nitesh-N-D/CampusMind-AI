@@ -1,14 +1,22 @@
-from datetime import datetime, timedelta
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import require_role
 from app.db import models
 from app.db.database import get_db
-from app.schemas.schemas import ConflictOut, ConflictResolve, KnowledgeHealthOut
+from app.schemas.schemas import (
+    ConflictOut,
+    ConflictResolve,
+    FacultyDomainUpdate,
+    KnowledgeHealthOut,
+    LoginEventOut,
+    LoginEventPage,
+    WorkspaceSettingsOut,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -132,17 +140,25 @@ def analytics(db: Session = Depends(get_db), admin: models.User = Depends(requir
     cid = admin.college_id
     since = datetime.utcnow() - timedelta(days=30)
 
-    total_questions = db.query(models.ChatMessage).join(models.ChatSession).filter(
-        models.ChatSession.college_id == cid, models.ChatMessage.role == "assistant"
-    ).count()
+    # Only student/faculty conversations count as usage - admin test
+    # questions (sent to verify an upload) are excluded.
+    end_user_answers = (
+        db.query(models.ChatMessage)
+        .join(models.ChatSession)
+        .join(models.User, models.ChatSession.user_id == models.User.id)
+        .filter(
+            models.ChatSession.college_id == cid,
+            models.ChatMessage.role == "assistant",
+            models.User.role != models.UserRole.ADMIN,
+        )
+    )
+    total_questions = end_user_answers.count()
 
     unanswered = db.query(models.SearchLog).filter(
         models.SearchLog.college_id == cid, models.SearchLog.was_answered.is_(False)
     ).count()
 
-    low_confidence = db.query(models.ChatMessage).join(models.ChatSession).filter(
-        models.ChatSession.college_id == cid,
-        models.ChatMessage.role == "assistant",
+    low_confidence = end_user_answers.filter(
         models.ChatMessage.confidence.isnot(None),
         models.ChatMessage.confidence < 40,
     ).count()
@@ -176,24 +192,108 @@ def analytics(db: Session = Depends(get_db), admin: models.User = Depends(requir
     }
 
 
-@router.get("/change-logs")
-def change_logs(db: Session = Depends(get_db), admin: models.User = Depends(require_role("admin"))):
-    logs = (
-        db.query(models.DocumentChangeLog)
-        .filter(models.DocumentChangeLog.college_id == admin.college_id)
-        .order_by(models.DocumentChangeLog.created_at.desc())
+def _as_naive_utc(value: Optional[datetime]) -> Optional[datetime]:
+    # Stored timestamps are naive UTC; bring timezone-aware filters in line.
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+@router.get("/login-events", response_model=LoginEventPage)
+def login_events(
+    role: Optional[Literal["student", "faculty"]] = None,
+    start: Optional[datetime] = Query(None, description="Inclusive lower bound (ISO 8601)."),
+    end: Optional[datetime] = Query(None, description="Exclusive upper bound (ISO 8601)."),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_role("admin")),
+):
+    """Student and faculty sign-ins and registrations for the admin's own
+    college, newest first."""
+    start, end = _as_naive_utc(start), _as_naive_utc(end)
+    if start and end and start >= end:
+        raise HTTPException(status_code=400, detail="The start of the date range must be before the end.")
+
+    q = (
+        db.query(models.LoginEvent, models.User)
+        .join(models.User, models.LoginEvent.user_id == models.User.id)
+        .filter(models.LoginEvent.college_id == admin.college_id)
+    )
+    if role:
+        q = q.filter(models.LoginEvent.role == role)
+    if start:
+        q = q.filter(models.LoginEvent.created_at >= start)
+    if end:
+        q = q.filter(models.LoginEvent.created_at < end)
+
+    total = q.count()
+    rows = (
+        q.order_by(models.LoginEvent.created_at.desc(), models.LoginEvent.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
-    return [
-        {
-            "id": l.id,
-            "old_document_id": l.old_document_id,
-            "new_document_id": l.new_document_id,
-            "topic": l.field_or_topic,
-            "old_value": l.old_value,
-            "new_value": l.new_value,
-            "impact_summary": l.impact_summary,
-            "created_at": l.created_at,
-        }
-        for l in logs
-    ]
+    return LoginEventPage(
+        items=[
+            LoginEventOut(
+                id=event.id,
+                user_id=user.id,
+                full_name=user.full_name,
+                email=user.email,
+                role=event.role,
+                event_type=event.event_type,
+                created_at=event.created_at.replace(tzinfo=timezone.utc),
+            )
+            for event, user in rows
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def _settings_out(college: models.College) -> WorkspaceSettingsOut:
+    return WorkspaceSettingsOut(
+        college_name=college.name,
+        official_domain=college.official_domain,
+        faculty_domain=college.faculty_domain,
+    )
+
+
+@router.get("/settings", response_model=WorkspaceSettingsOut)
+def get_workspace_settings(
+    db: Session = Depends(get_db), admin: models.User = Depends(require_role("admin"))
+):
+    return _settings_out(admin.college)
+
+
+@router.put("/settings/faculty-domain", response_model=WorkspaceSettingsOut)
+def set_faculty_domain(
+    payload: FacultyDomainUpdate,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_role("admin")),
+):
+    """The only place faculty_domain can be set, changed, or cleared.
+    Clearing it (null) closes faculty signup again; existing faculty
+    accounts are unaffected."""
+    college = admin.college
+    domain = payload.faculty_domain
+    if domain is not None:
+        taken = (
+            db.query(models.College)
+            .filter(models.College.id != college.id)
+            .filter(
+                (models.College.official_domain == domain)
+                | (models.College.faculty_domain == domain)
+            )
+            .first()
+        )
+        if taken:
+            raise HTTPException(
+                status_code=409, detail="That domain is already registered to another college."
+            )
+    college.faculty_domain = domain
+    db.commit()
+    db.refresh(college)
+    return _settings_out(college)

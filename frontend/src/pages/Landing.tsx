@@ -24,7 +24,7 @@ const FEATURES = [
   },
   {
     title: "Any official format",
-    body: "PDF, Word, Excel, CSV, plain text, and photos of printed notices. Scanned pages and images are read with text recognition.",
+    body: "PDF, Word, Excel, PowerPoint, CSV, plain text, and photos of printed notices. Scanned pages and images are read with text recognition.",
   },
   {
     title: "English, Tamil, and Hindi",

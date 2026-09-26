@@ -23,7 +23,7 @@ without touching code or infrastructure.
 | **Personalized context** | Students set department/year/semester once; retrieval ranks around what's relevant to them. Fully editable and deletable - see `docs/SECURITY.md`. |
 | **Role separation** | Students and faculty get a focused chat-first experience; only admins see and manage the document library. Students and faculty see documents only through cited answers. |
 | **Faculty-domain gating** | Faculty can only sign up with an email on a faculty domain the admin has set in Settings. Until an admin sets one, faculty signup at that college is closed with a clear message. |
-| **Multi-format ingestion** | PDF, Word (.docx), Excel (.xlsx), CSV, plain text, and images (.jpg/.png). Scanned PDF pages and photos of notices are read with on-device OCR (RapidOCR - no system install). Renamed, corrupt, empty, or unsupported files are rejected with a specific message. |
+| **Multi-format ingestion** | PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx - each slide is cited by number and title, speaker notes included), CSV, plain text, and images (.jpg/.png). Scanned PDF pages and photos of notices are read with on-device OCR (RapidOCR - no system install). Renamed, corrupt, empty, or unsupported files are rejected with a specific message. |
 | **Hybrid retrieval** | BM25 over stemmed terms (title + section heading + text), query-term coverage, and embedding similarity, trust- and recency-weighted. Unrelated questions abstain instead of citing a loosely related document. |
 | **AI Campus Copilot** | Handles task-style requests ("summarize the latest placement circular", "give me a checklist for registration") not just lookup questions. |
 | **Admin command center** | Knowledge Health score, conflict queue, usage analytics, verification workflow, and a login-activity log. |
@@ -87,7 +87,7 @@ Open <http://localhost:5173>.
 2. Upload the sample files in `backend/seed_data/` (clearly marked demo data)
    from **Documents**: upload `attendance_reg_2025.pdf` first, then upload
    `attendance_reg_2026.pdf` and set "Supersedes" to the first one. The Word,
-   Excel, CSV, text, and image samples show multi-format ingestion
+   Excel, PowerPoint, CSV, text, and image samples show multi-format ingestion
    (regenerate them with `python seed_data/make_format_samples.py`).
 3. Optionally set a faculty domain under **Settings** to open faculty signup.
 4. Sign out, register a student with an email on the same domain.
@@ -119,7 +119,7 @@ This is a working prototype covering the full core loop (auth, multi-tenant
 isolation, three roles - student/faculty/admin - with faculty-domain gating,
 multi-format ingestion with OCR, RAG chat, trust scoring, temporal
 retrieval, conflict detection, admin dashboard, login analytics, light/dark
-theming) with a 91-test backend suite (`backend/tests/`) covering auth,
+theming) with a 100-test backend suite (`backend/tests/`) covering auth,
 RBAC across all three roles, tenant isolation, ingestion of every supported
 format, retrieval quality, login analytics, and the RAG/conflict pipeline.
 Not yet built: streaming responses, and multilingual answers without an AI

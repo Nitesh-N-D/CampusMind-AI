@@ -10,9 +10,11 @@
 - [x] Faculty-domain gating: faculty sign up only with an email on the
       faculty domain an admin sets in Settings; with no faculty domain set,
       faculty signup at that college is closed with a clear message
-- [x] Multi-format ingestion: PDF, Word (.docx), Excel (.xlsx), CSV, plain
-      text, and images (.jpg/.png). Heading-aware sections for Word/text,
-      one section per sheet for Excel, table rows as "Header: value"
+- [x] Multi-format ingestion: PDF, Word (.docx), Excel (.xlsx), PowerPoint
+      (.pptx), CSV, plain text, and images (.jpg/.png). Heading-aware
+      sections for Word/text, one section per sheet for Excel, one per
+      slide for PowerPoint (text, tables, speaker notes, OCR for
+      picture-only slides), table rows as "Header: value"
       sentences. Magic-byte checks reject renamed files; corrupt, empty,
       oversized, and unsupported files get specific messages
 - [x] OCR for scanned PDF pages and images via RapidOCR (pip-only, no
@@ -68,7 +70,7 @@
       is a public liveness probe
 - [x] Provider abstraction for AI + embeddings (Gemini/OpenAI/Claude/local)
 - [x] Full frontend: 14 pages, responsive, custom design system, real SEO
-- [x] 91-test backend suite covering auth, RBAC, faculty gating, tenant
+- [x] 100-test backend suite covering auth, RBAC, faculty gating, tenant
       isolation, ingestion of every format, retrieval quality, login
       analytics, migrations, RAG, and conflict detection and resolution
 
@@ -100,8 +102,8 @@ endpoints, tables, and pages no longer exist:
       returns a complete response rather than SSE/websocket streaming)
 - [ ] Rate limiting on auth/chat endpoints
 - [ ] Email verification for signup (currently domain-match only)
-- [ ] Legacy Office formats (.doc, .xls, .ppt, .pptx) - rejected with a
-      message asking for the modern format
+- [ ] Legacy Office formats (.doc, .xls, .ppt) - rejected with a message
+      asking for the modern format
 - [ ] CI pipeline running the test suite on push
 
 ## Known limitations to be upfront about

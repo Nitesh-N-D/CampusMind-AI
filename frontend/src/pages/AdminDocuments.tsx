@@ -10,6 +10,7 @@ const FILE_TYPE_LABEL: Record<DocumentOut["file_type"], string> = {
   pdf: "PDF",
   word: "Word",
   excel: "Excel",
+  presentation: "PowerPoint",
   csv: "CSV",
   text: "Text",
   image: "Image",
@@ -92,7 +93,7 @@ export default function AdminDocuments() {
       {!loading && !error && docs?.length === 0 && (
         <EmptyState
           title="Upload your first official document"
-          body="Start with an academic regulation or the current exam schedule - CampusMind AI can only answer from what's uploaded here. PDF, Word, Excel, CSV, text, and image files are supported."
+          body="Start with an academic regulation or the current exam schedule - CampusMind AI can only answer from what's uploaded here. PDF, Word, Excel, PowerPoint, CSV, text, and image files are supported."
           action={<Button onClick={() => setShowUpload(true)}>Upload documents</Button>}
         />
       )}
@@ -115,7 +116,13 @@ export default function AdminDocuments() {
                   {doc.academic_year ? ` - ${doc.academic_year}` : ""}
                   {" - v"}
                   {doc.version} - {doc.page_count}{" "}
-                  {doc.file_type === "pdf" ? "page" : doc.file_type === "excel" ? "sheet" : "section"}
+                  {doc.file_type === "pdf"
+                    ? "page"
+                    : doc.file_type === "excel"
+                      ? "sheet"
+                      : doc.file_type === "presentation"
+                        ? "slide"
+                        : "section"}
                   {doc.page_count === 1 ? "" : "s"}
                 </p>
                 {doc.effective_date && (

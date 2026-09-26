@@ -73,7 +73,7 @@ expose that.
 ## Input validation & upload safety
 
 - Uploads are admin-only. Accepted extensions are `.pdf`, `.docx`,
-  `.xlsx`, `.csv`, `.txt`, `.jpg`/`.jpeg`, `.png` (`FILE_TYPES` in
+  `.xlsx`, `.pptx`, `.csv`, `.txt`, `.jpg`/`.jpeg`, `.png` (`FILE_TYPES` in
   `app/ingestion/extractors.py`). Legacy Office formats are rejected with a
   message naming the modern format.
 - The file's first bytes must match its extension

@@ -34,7 +34,8 @@ async def process_document(db: Session, document: models.Document) -> None:
                     chunk_index=idx,
                     page_number=c.page_number,
                     heading=c.heading,
-                    section=c.heading,
+                    # section is String(120); Postgres rejects longer values.
+                    section=c.heading[:120] if c.heading else None,
                     content=c.content,
                     embedding=vector,
                 )

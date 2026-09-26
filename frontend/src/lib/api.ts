@@ -100,7 +100,7 @@ export interface DocumentOut {
   status: "uploaded" | "processing" | "ready" | "failed" | "archived";
   is_demo_data: boolean;
   page_count: number;
-  file_type: "pdf" | "word" | "excel" | "csv" | "text" | "image" | "unknown";
+  file_type: "pdf" | "word" | "excel" | "presentation" | "csv" | "text" | "image" | "unknown";
   processing_error?: string | null;
   created_at: string;
 }

@@ -131,6 +131,9 @@ Text extraction (app/ingestion/extractors.py), one function per format:
   Word  python-docx, split into sections by heading; tables become
         "Header: value" sentences
   Excel openpyxl, one section per sheet, rows as sentences
+  PPTX  python-pptx, one section per slide ("Slide N: title"): text,
+        tables, grouped shapes, speaker notes; picture-only slides
+        are OCR'd
   CSV   sniffed delimiter, utf-8/BOM/utf-16/cp1252
   Text  split on markdown or title-like headings
   Image RapidOCR

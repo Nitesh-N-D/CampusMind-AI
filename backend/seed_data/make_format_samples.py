@@ -10,6 +10,8 @@ import os
 from docx import Document
 from openpyxl import Workbook
 from PIL import Image, ImageDraw, ImageFont
+from pptx import Presentation
+from pptx.util import Inches
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEMO = "DEMO DATA - fictional sample document for CampusMind AI."
@@ -60,6 +62,34 @@ def make_xlsx():
     notes.append([DEMO])
     notes.append(["The annual transport fee is Rs. 18,000 and is payable before the start of the odd semester."])
     wb.save(os.path.join(HERE, "transport_schedule.xlsx"))
+
+
+def make_pptx():
+    deck = Presentation()
+    title_slide = deck.slides.add_slide(deck.slide_layouts[0])
+    title_slide.shapes.title.text = "Placement Orientation 2025-26"
+    title_slide.placeholders[1].text = DEMO
+
+    slide = deck.slides.add_slide(deck.slide_layouts[1])
+    slide.shapes.title.text = "Eligibility"
+    body = slide.placeholders[1].text_frame
+    body.text = "Students need a minimum CGPA of 7.0 to register for campus placements."
+    body.add_paragraph().text = "Students with more than one standing arrear cannot register."
+    slide.notes_slide.notes_text_frame.text = "Registration closes on 30 June 2025."
+
+    slide = deck.slides.add_slide(deck.slide_layouts[5])
+    slide.shapes.title.text = "Drive schedule"
+    rows = [
+        ("Phase", "Dates"),
+        ("Aptitude training", "1 July to 31 July 2025"),
+        ("Mock interviews", "4 August to 8 August 2025"),
+        ("Placement drives", "From 1 September 2025"),
+    ]
+    table = slide.shapes.add_table(len(rows), 2, Inches(0.8), Inches(1.8), Inches(8), Inches(2.5)).table
+    for r, (phase, dates) in enumerate(rows):
+        table.cell(r, 0).text = phase
+        table.cell(r, 1).text = dates
+    deck.save(os.path.join(HERE, "placement_orientation.pptx"))
 
 
 def make_csv():
@@ -113,6 +143,7 @@ def make_png():
 if __name__ == "__main__":
     make_docx()
     make_xlsx()
+    make_pptx()
     make_csv()
     make_txt()
     make_png()

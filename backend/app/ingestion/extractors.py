@@ -30,6 +30,7 @@ FILE_TYPES = {
     ".pdf": "pdf",
     ".docx": "word",
     ".xlsx": "excel",
+    ".pptx": "presentation",
     ".csv": "csv",
     ".txt": "text",
     ".jpg": "image",
@@ -39,7 +40,7 @@ FILE_TYPES = {
 
 # Legacy binary Office formats need a different parser entirely - say so
 # plainly instead of the generic "unsupported" message.
-LEGACY_EXTENSIONS = {".doc": ".docx", ".xls": ".xlsx", ".ppt": None, ".pptx": None}
+LEGACY_EXTENSIONS = {".doc": ".docx", ".xls": ".xlsx", ".ppt": ".pptx"}
 
 MAX_SPREADSHEET_ROWS = 20_000
 MAX_IMAGE_PIXELS = 40_000_000
@@ -84,13 +85,11 @@ def unsupported_type_message(filename: str) -> str:
     ext = _ext(filename)
     if ext in LEGACY_EXTENSIONS:
         modern = LEGACY_EXTENSIONS[ext]
-        if modern:
-            return f"Older {ext} files aren't supported. Save it as {modern} and upload that instead."
-        return "Presentation files aren't supported. Export it as a PDF and upload that instead."
+        return f"Older {ext} files aren't supported. Save it as {modern} and upload that instead."
     shown = ext or "files without an extension"
     return (
         f"Unsupported file type ({shown}). Upload a PDF, Word (.docx), Excel (.xlsx), "
-        "CSV, plain text (.txt), or image (.jpg, .png) file."
+        "PowerPoint (.pptx), CSV, plain text (.txt), or image (.jpg, .png) file."
     )
 
 
@@ -99,7 +98,7 @@ def content_matches_type(file_type: str, head: bytes) -> bool:
     of failing deep inside a parser."""
     if file_type == "pdf":
         return head.lstrip()[:5] == b"%PDF-"
-    if file_type in ("word", "excel"):
+    if file_type in ("word", "excel", "presentation"):
         return head[:4] == b"PK\x03\x04"
     if file_type == "image":
         return head[:8] == b"\x89PNG\r\n\x1a\n" or head[:3] == b"\xff\xd8\xff"
@@ -266,6 +265,78 @@ def extract_xlsx(file_path: str) -> List[PageContent]:
     return sheets
 
 
+def extract_pptx(file_path: str) -> List[PageContent]:
+    """One section per slide, headed "Slide N: <title>" so citations point at
+    the slide. Text boxes, tables, grouped shapes, and speaker notes are all
+    read; a slide that's only a picture (a pasted scan or screenshot) is
+    OCR'd like a scanned PDF page."""
+    from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    try:
+        slides = list(Presentation(file_path).slides)
+    except Exception as exc:  # noqa: BLE001 - python-pptx raises many zip/xml error types
+        raise ExtractionError("This PowerPoint file appears to be damaged or isn't a valid .pptx file.") from exc
+
+    def walk(shapes):
+        for shape in shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                yield from walk(shape.shapes)
+            else:
+                yield shape
+
+    sections: List[PageContent] = []
+    for number, slide in enumerate(slides, start=1):
+        title_shape = slide.shapes.title
+        title = title_shape.text_frame.text.strip() if title_shape is not None else ""
+        # python-pptx returns a new proxy object per access, so compare ids.
+        title_id = title_shape.shape_id if title_shape is not None else None
+        lines: List[str] = []
+        pictures = []
+        for shape in walk(slide.shapes):
+            if shape.has_text_frame and shape.shape_id != title_id:
+                for paragraph in shape.text_frame.paragraphs:
+                    text = "".join(run.text for run in paragraph.runs).strip()
+                    if text:
+                        lines.append(text)
+            elif getattr(shape, "has_table", False) and shape.has_table:
+                rows = [[cell.text.strip() for cell in row.cells] for row in shape.table.rows]
+                lines.extend(_rows_to_lines(rows))
+            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                pictures.append(shape)
+
+        likely_scanned = len(" ".join(lines)) < 30 and bool(pictures)
+        if likely_scanned:
+            lines.extend(t for t in (_ocr_slide_picture(p) for p in pictures) if t)
+
+        if slide.has_notes_slide:
+            notes = slide.notes_slide.notes_text_frame.text.strip() if slide.notes_slide.notes_text_frame else ""
+            if notes:
+                lines.append(notes)
+
+        heading = f"Slide {number}: {title}"[:500] if title else f"Slide {number}"
+        body = "\n".join(lines).strip()
+        if not body and not title:
+            continue
+        # Keep the title in the body too, so it's searchable.
+        text = "\n".join(filter(None, [_as_sentence(title) if title else "", body]))
+        sections.append(PageContent(page_number=None, text=text, likely_scanned=likely_scanned, heading=heading))
+    return sections
+
+
+def _ocr_slide_picture(shape) -> str:
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        with Image.open(io.BytesIO(shape.image.blob)) as img:
+            img.load()
+            return ocr_image(img)
+    except ExtractionError:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError, AttributeError):
+        return ""  # unsupported embedded image formats (e.g. EMF) - skip, don't fail the deck
+
+
 def extract_csv(file_path: str) -> List[PageContent]:
     raw = _read_text(file_path)
     try:
@@ -334,6 +405,7 @@ EXTRACTORS = {
     "pdf": extract_pdf,
     "word": extract_docx,
     "excel": extract_xlsx,
+    "presentation": extract_pptx,
     "csv": extract_csv,
     "text": extract_txt,
     "image": extract_image,

@@ -20,6 +20,7 @@ FILE_TYPE_LABELS = {
     "pdf": "PDF",
     "word": "Word document",
     "excel": "Excel spreadsheet",
+    "presentation": "PowerPoint presentation",
     "csv": "CSV spreadsheet",
     "text": "text file",
     "image": "image",

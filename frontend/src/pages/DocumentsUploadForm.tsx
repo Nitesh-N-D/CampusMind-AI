@@ -20,6 +20,7 @@ const FILE_KINDS: Record<string, string> = {
   pdf: "PDF",
   docx: "Word",
   xlsx: "Excel",
+  pptx: "PowerPoint",
   csv: "CSV",
   txt: "Text",
   jpg: "Image",
@@ -96,7 +97,7 @@ export function UploadForm({
     });
     setError(
       rejected.length
-        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), CSV, text (.txt), and images (.jpg, .png), up to ${MAX_UPLOAD_MB}MB each.`
+        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), and images (.jpg, .png), up to ${MAX_UPLOAD_MB}MB each.`
         : null
     );
     if (accepted.length === 0) return;
@@ -206,7 +207,7 @@ export function UploadForm({
         </svg>
         <p className="text-sm font-medium text-ink-800">Drag files here, or click to browse</p>
         <p className="text-xs text-ink-400 max-w-md">
-          PDF, Word (.docx), Excel (.xlsx), CSV, text (.txt), or images (.jpg, .png), up to {MAX_UPLOAD_MB}MB each.
+          PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .png), up to {MAX_UPLOAD_MB}MB each.
           Images and scanned PDFs are read with text recognition.
         </p>
         <input

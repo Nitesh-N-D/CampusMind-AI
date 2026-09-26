@@ -48,7 +48,7 @@ React SPA (Vite/TS/Tailwind)  <-- HTTPS/JSON -->  FastAPI backend
   trust and temporal weighting (superseded docs down-weighted, not
   excluded), a relative score cutoff, abstention when nothing relevant is
   found, conflict detection, then LLM generation with citations.
-- **Ingestion** (`app/ingestion/`): PDF, Word, Excel, CSV, text, and images;
+- **Ingestion** (`app/ingestion/`): PDF, Word, Excel, PowerPoint, CSV, text, and images;
   OCR (RapidOCR) for images and scanned PDF pages; heading-aware chunking;
   embeddings; trust scoring; `READY` or `FAILED` with a user-facing reason.
 - **Schema upgrades**: `create_all` plus `app/db/migrations.py` at startup
@@ -62,7 +62,7 @@ re-duplicated here to avoid drift.
 
 Working end-to-end today: auth (JWT + bcrypt) with server-side RBAC across
 three roles (admin/student/faculty); domain-restricted college signup with
-faculty-domain gating; multi-format ingestion (PDF, .docx, .xlsx, .csv,
+faculty-domain gating; multi-format ingestion (PDF, .docx, .xlsx, .pptx, .csv,
 .txt, .jpg/.png) with OCR and trust/temporal/versioning metadata; RAG chat
 with page/section citations, trust scores, and conflict banners; conflict
 detection + admin resolution workflow; admin command center (Knowledge
@@ -111,7 +111,7 @@ backend/tests/               conftest.py (fixtures), test_auth.py,
                              test_ingestion_formats.py, test_login_events.py,
                              test_migrations.py, test_profile.py, test_rag.py,
                              test_retrieval_quality.py, test_roles.py
-                             (91 tests)
+                             (100 tests)
 backend/seed_data/           Demo documents in every supported format, all
                              labelled as fictional, plus
                              make_format_samples.py to regenerate them
@@ -143,7 +143,7 @@ CLAUDE.md                    Working rules for Claude Code in this repo
 **Backend** (`backend/requirements.txt`) — Python, FastAPI 0.115, Uvicorn
 0.30 (standard extras), SQLAlchemy 2.0.35, Pydantic 2.9 / pydantic-settings
 2.5, python-jose + bcrypt (JWT/password hashing), pypdf 4.3 (PDF text),
-python-docx 1.2 (Word), openpyxl 3.1 (Excel), rapidocr-onnxruntime 1.4 +
+python-docx 1.2 (Word), python-pptx 1.0 (PowerPoint), openpyxl 3.1 (Excel), rapidocr-onnxruntime 1.4 +
 onnxruntime 1.30 (OCR; pulls in opencv-python as a dependency), rank-bm25
 0.2.2, numpy 2.4, httpx 0.27, tenacity 8.5 (retries), cloudinary 1.45 +
 Pillow 12.1 (profile pictures and image handling), psycopg[binary] 3.2
@@ -160,7 +160,7 @@ v4.3 (via `@tailwindcss/vite`), oxlint 1.75 (linting).
 
 Verified on 2026-09-26:
 
-- **Backend test suite: 91/91 passing** (`python -m pytest tests/ -v`):
+- **Backend test suite: 100/100 passing** (`python -m pytest tests/ -v`):
   auth, RBAC across all three roles, faculty-domain gating, tenant
   isolation, ingestion of every supported format (including OCR and
   corrupt/renamed/empty files), retrieval quality on 14 labeled questions,
@@ -217,7 +217,7 @@ python3 -m venv venv && source venv/bin/activate   # or venv\Scripts\activate on
 pip install -r requirements.txt
 cp .env.example .env                                # then add a Gemini key
 uvicorn app.main:app --reload --port 8000           # dev server, http://localhost:8000
-python -m pytest tests/ -v                          # full test suite (91 tests)
+python -m pytest tests/ -v                          # full test suite (100 tests)
 ```
 
 **Frontend**

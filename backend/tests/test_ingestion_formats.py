@@ -15,6 +15,7 @@ from app.main import app
 FORMAT_SAMPLES = [
     ("hostel_rules.docx", "word", "9:30 PM"),
     ("transport_schedule.xlsx", "excel", "Starting point: Tambaram; Departure time: 7:10 AM"),
+    ("placement_orientation.pptx", "presentation", "minimum CGPA of 7.0"),
     ("exam_fee_schedule.csv", "csv", "Semester exam fee: Rs. 1500"),
     ("scholarship_faq.txt", "text", "15 October 2025"),
     ("library_notice.png", "image", "Library opens at 8:00 AM on weekdays"),
@@ -97,6 +98,56 @@ def test_scanned_pdf_falls_back_to_ocr(client, college_and_admin):
     assert "Hall tickets are issued" in " ".join(c.content for c in _chunks(doc["id"]))
 
 
+def test_pptx_cites_slides_and_reads_tables_and_notes(client, college_and_admin, seed_pdf_path):
+    admin_token, _ = college_and_admin
+    with open(os.path.join(seed_pdf_path, "placement_orientation.pptx"), "rb") as f:
+        doc = _post(client, admin_token, "placement_orientation.pptx", f.read()).json()
+    assert doc["status"] == "ready", doc["processing_error"]
+    chunks = _chunks(doc["id"])
+    assert {c.page_number for c in chunks} == {None}
+    assert "Slide 2: Eligibility" in {c.section for c in chunks}
+    text = " ".join(c.content for c in chunks)
+    assert "Phase: Mock interviews; Dates: 4 August to 8 August 2025." in text  # table
+    assert "Registration closes on 30 June 2025." in text  # speaker notes
+
+
+def test_picture_only_slide_falls_back_to_ocr(client, college_and_admin):
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    admin_token, _ = college_and_admin
+    # A slide that's just a pasted screenshot of a notice, no text boxes.
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    picture = io.BytesIO(_text_image(["Fee payment closes on 12 December."]))
+    slide.shapes.add_picture(picture, Inches(0.5), Inches(1), width=Inches(9))
+    buf = io.BytesIO()
+    deck.save(buf)
+
+    doc = _post(client, admin_token, "fee_notice.pptx", buf.getvalue()).json()
+    assert doc["status"] == "ready", doc["processing_error"]
+    assert "Fee payment closes" in " ".join(c.content for c in _chunks(doc["id"]))
+
+
+def test_long_heading_fits_section_column(client, college_and_admin):
+    from pptx import Presentation
+
+    admin_token, _ = college_and_admin
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[1])
+    slide.shapes.title.text = "Revised guidelines " * 12  # ~230 characters
+    slide.placeholders[1].text_frame.text = "Internal assessment carries 40 marks."
+    buf = io.BytesIO()
+    deck.save(buf)
+
+    doc = _post(client, admin_token, "guidelines.pptx", buf.getvalue()).json()
+    assert doc["status"] == "ready", doc["processing_error"]
+    chunks = _chunks(doc["id"])
+    # SQLite doesn't enforce String(120); Postgres would reject the insert.
+    assert all(len(c.section) <= 120 for c in chunks)
+    assert all(len(c.heading) > 120 for c in chunks)  # full heading kept for citations
+
+
 @pytest.mark.parametrize(
     "filename,expected",
     [
@@ -104,7 +155,7 @@ def test_scanned_pdf_falls_back_to_ocr(client, college_and_admin):
         ("README", "Unsupported file type"),
         ("old_rules.doc", "Save it as .docx"),
         ("old_sheet.xls", "Save it as .xlsx"),
-        ("slides.pptx", "Export it as a PDF"),
+        ("old_slides.ppt", "Save it as .pptx"),
     ],
 )
 def test_unsupported_types_are_rejected_with_clear_message(client, college_and_admin, filename, expected):
@@ -120,6 +171,7 @@ def test_unsupported_types_are_rejected_with_clear_message(client, college_and_a
         ("notes.pdf", b"just some plain text, not a pdf"),
         ("rules.docx", b"plain text renamed to docx"),
         ("sheet.xlsx", b"%PDF-1.4 a pdf renamed to xlsx"),
+        ("slides.pptx", b"%PDF-1.4 a pdf renamed to pptx"),
         ("photo.png", b"GIF89a not a png"),
         ("notes.txt", b"MZ\x90\x00\x03\x00\x00\x00binary"),
     ],
@@ -137,6 +189,7 @@ def test_renamed_files_are_rejected_before_processing(client, college_and_admin,
         ("broken.pdf", b"%PDF-1.4\n garbage that is not a real pdf body", "PDF appears to be damaged"),
         ("broken.docx", b"PK\x03\x04 truncated zip", "Word file appears to be damaged"),
         ("broken.xlsx", b"PK\x03\x04 truncated zip", "Excel file appears to be damaged"),
+        ("broken.pptx", b"PK\x03\x04 truncated zip", "PowerPoint file appears to be damaged"),
         ("broken.png", b"\x89PNG\r\n\x1a\n truncated", "image appears to be damaged"),
         ("blank.txt", b"   \n\n  ", "doesn't contain any readable text"),
     ],

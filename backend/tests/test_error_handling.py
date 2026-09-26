@@ -27,6 +27,13 @@ def test_every_response_carries_a_request_id_header(client):
     assert "x-request-id" in {k.lower() for k in resp.headers.keys()}
 
 
+def test_health_requires_sign_in_and_reveals_nothing(client, student_token):
+    assert client.get("/api/health").status_code == 401
+    resp = client.get("/api/health", headers={"Authorization": f"Bearer {student_token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
 def test_unknown_route_returns_consistent_detail_shape(client):
     resp = client.get("/api/this-route-does-not-exist")
     assert resp.status_code == 404

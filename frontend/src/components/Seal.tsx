@@ -136,7 +136,3 @@ export function Seal({
     </div>
   );
 }
-
-export function trustLabel(level: TrustLevel): string {
-  return TIER[level]?.label ?? "Unrated";
-}

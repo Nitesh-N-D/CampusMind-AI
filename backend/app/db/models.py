@@ -195,7 +195,9 @@ class ChatSession(Base):
     language = Column(String(20), default="en")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+    messages = relationship(
+        "ChatMessage", back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.id"
+    )
 
 
 class ChatMessage(Base):

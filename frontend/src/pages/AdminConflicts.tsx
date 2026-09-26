@@ -74,7 +74,7 @@ export default function AdminConflicts() {
                   <Badge tone="amber">Conflict</Badge>
                   <h3 className="font-medium text-ink-900 capitalize">{c.topic}</h3>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <ConflictSide
                     label="Source A"
                     title={docA?.title ?? `Document #${c.document_a_id}`}

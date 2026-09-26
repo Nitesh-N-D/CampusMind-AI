@@ -1,4 +1,6 @@
 import os
+import shutil
+
 import pytest
 
 # Point the app's own module-level engine at a throwaway file before any
@@ -7,6 +9,9 @@ import pytest
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_campusmind.db")
 os.environ.setdefault("AI_PROVIDER", "mock")
 os.environ.setdefault("EMBEDDING_PROVIDER", "local")
+# Uploaded test files go to their own folder, removed after the run, so
+# they never pile up next to real development uploads in ./uploads.
+os.environ.setdefault("UPLOAD_DIR", "./test_uploads")
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -24,6 +29,15 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _clean_test_uploads():
+    yield
+    from app.core.config import settings
+
+    if os.path.basename(os.path.normpath(settings.upload_dir)) == "test_uploads":
+        shutil.rmtree(settings.upload_dir, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

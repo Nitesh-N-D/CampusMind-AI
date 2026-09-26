@@ -54,8 +54,7 @@ class CollegeOut(BaseModel):
     official_domain: str
     logo_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- Profile ----------
@@ -135,8 +134,7 @@ class ProfileOut(BaseModel):
     interests: List[str] = []
     preferred_language: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- Documents ----------
@@ -163,8 +161,7 @@ class DocumentOut(BaseModel):
     processing_error: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- Chat ----------
@@ -226,8 +223,7 @@ class EventOut(BaseModel):
     department: Optional[str]
     document_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- Admin ----------
@@ -254,8 +250,7 @@ class ConflictOut(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConflictResolve(BaseModel):

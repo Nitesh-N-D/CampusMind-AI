@@ -89,7 +89,7 @@ def unsupported_type_message(filename: str) -> str:
     shown = ext or "files without an extension"
     return (
         f"Unsupported file type ({shown}). Upload a PDF, Word (.docx), Excel (.xlsx), "
-        "PowerPoint (.pptx), CSV, plain text (.txt), or image (.jpg, .png) file."
+        "PowerPoint (.pptx), CSV, plain text (.txt), or image (.jpg, .jpeg, .png) file."
     )
 
 
@@ -384,7 +384,7 @@ def extract_txt(file_path: str) -> List[PageContent]:
 
 
 def extract_image(file_path: str) -> List[PageContent]:
-    from PIL import Image, UnidentifiedImageError
+    from PIL import Image, ImageOps, UnidentifiedImageError
 
     try:
         with Image.open(file_path) as img:
@@ -393,11 +393,13 @@ def extract_image(file_path: str) -> List[PageContent]:
                     "This image is too large to read. Resize it below 40 megapixels and try again."
                 )
             img.load()
-            text = ocr_image(img)
+            # Phone cameras store pixels sideways and record the rotation in
+            # EXIF; apply it so OCR sees the notice upright.
+            text = ocr_image(ImageOps.exif_transpose(img))
     except ExtractionError:
         raise
     except (UnidentifiedImageError, OSError, SyntaxError) as exc:
-        raise ExtractionError("This image appears to be damaged or isn't a valid JPG/PNG file.") from exc
+        raise ExtractionError("This image appears to be damaged or isn't a valid JPG, JPEG, or PNG file.") from exc
     return [PageContent(page_number=None, text=text, likely_scanned=True, heading=None)] if text else []
 
 

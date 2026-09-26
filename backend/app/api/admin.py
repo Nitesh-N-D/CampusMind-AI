@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,7 @@ from app.schemas.schemas import (
     LoginEventPage,
     WorkspaceSettingsOut,
 )
+from app.services.user_export import AccountRow, account_status, build_csv, build_xlsx
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -126,7 +128,7 @@ def resolve_conflict(
         if payload.authoritative_document_id == conflict.document_a_id
         else conflict.document_a_id
     )
-    losing_doc = db.query(models.Document).get(losing_id)
+    losing_doc = db.get(models.Document, losing_id)
     if losing_doc:
         losing_doc.status = models.DocumentStatus.ARCHIVED
 
@@ -250,6 +252,56 @@ def login_events(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/users/export")
+def export_users(
+    fmt: Literal["csv", "xlsx"] = Query("csv", alias="format"),
+    tz_offset: int = Query(0, ge=-840, le=840, description="Reader's offset from UTC, in minutes"),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_role("admin")),
+):
+    """Every student and faculty account in the admin's own college, with
+    signup date, last sign-in, and account status. No password hashes."""
+    last_login = (
+        db.query(models.LoginEvent.user_id, func.max(models.LoginEvent.created_at).label("at"))
+        .filter(models.LoginEvent.college_id == admin.college_id, models.LoginEvent.event_type == "login")
+        .group_by(models.LoginEvent.user_id)
+        .subquery()
+    )
+    users = (
+        db.query(models.User, last_login.c.at)
+        .outerjoin(last_login, last_login.c.user_id == models.User.id)
+        .filter(
+            models.User.college_id == admin.college_id,
+            models.User.role.in_([models.UserRole.STUDENT, models.UserRole.FACULTY]),
+        )
+        .order_by(models.User.role, models.User.full_name, models.User.id)
+        .all()
+    )
+    rows = [
+        AccountRow(
+            full_name=u.full_name,
+            email=u.email,
+            role=u.role.value,
+            status=account_status(u),
+            signed_up=u.created_at,
+            last_login=at,
+        )
+        for u, at in users
+    ]
+
+    stamp = (datetime.utcnow() + timedelta(minutes=tz_offset)).strftime("%Y-%m-%d")
+    if fmt == "csv":
+        content, media = build_csv(rows, tz_offset), "text/csv; charset=utf-8"
+    else:
+        content = build_xlsx(rows, tz_offset)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return Response(
+        content=content,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="campusmind-accounts-{stamp}.{fmt}"'},
     )
 
 

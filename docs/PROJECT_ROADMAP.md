@@ -11,7 +11,7 @@
       faculty domain an admin sets in Settings; with no faculty domain set,
       faculty signup at that college is closed with a clear message
 - [x] Multi-format ingestion: PDF, Word (.docx), Excel (.xlsx), PowerPoint
-      (.pptx), CSV, plain text, and images (.jpg/.png). Heading-aware
+      (.pptx), CSV, plain text, and images (.jpg/.jpeg/.png). Heading-aware
       sections for Word/text, one section per sheet for Excel, one per
       slide for PowerPoint (text, tables, speaker notes, OCR for
       picture-only slides), table rows as "Header: value"
@@ -59,7 +59,12 @@
 - [x] Toast system replacing all `alert()` calls
 - [x] Voice input for chat via the Web Speech API (English/Tamil/Hindi),
       with graceful degradation on unsupported browsers
-- [x] Conversation export to Markdown, including citations and confidence
+- [x] Chat history download (PDF or .txt) for students and faculty: own
+      conversations only, current or any selection of past ones, with name,
+      college, per-message times in the reader's timezone, and cited sources
+- [x] Admin account export (CSV or .xlsx) from Login activity: name, email,
+      role, status, signup date, last login; scoped to the admin's college,
+      no password hashes, spreadsheet-formula injection neutralised
 - [x] Bulk drag-and-drop document upload in any supported format, with
       per-file progress and failure reasons
 - [x] Startup migrations (`app/db/migrations.py`) that add new columns to
@@ -67,10 +72,10 @@
 - [x] Full authorization audit: every route in `app/api/*.py` requires
       `get_current_user` or `require_role(...)` except the 3 public auth
       endpoints (register-college, register-student, login); `/api/health`
-      is a public liveness probe
+      also requires sign-in and returns only `{"status":"ok"}`
 - [x] Provider abstraction for AI + embeddings (Gemini/OpenAI/Claude/local)
 - [x] Full frontend: 14 pages, responsive, custom design system, real SEO
-- [x] 100-test backend suite covering auth, RBAC, faculty gating, tenant
+- [x] 124-test backend suite covering auth, RBAC, faculty gating, tenant
       isolation, ingestion of every format, retrieval quality, login
       analytics, migrations, RAG, and conflict detection and resolution
 

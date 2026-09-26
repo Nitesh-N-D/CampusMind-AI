@@ -71,6 +71,25 @@ async function postForm<T>(path: string, form: FormData): Promise<T> {
   return handle<T>(res);
 }
 
+// Fetches a generated file with the user's token and saves it under the
+// server-chosen filename.
+async function download(path: string, params: [string, string][], fallbackName: string): Promise<void> {
+  const url = new URL(API_BASE + path);
+  params.forEach(([k, v]) => url.searchParams.append(k, v));
+  const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
+  if (!res.ok) await handle<never>(res);
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] || fallbackName;
+  const href = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
+
 // ---- Types mirrored from backend/app/schemas/schemas.py ----
 
 export interface TokenResponse {
@@ -260,6 +279,17 @@ export const api = {
       del<{ status: string }>(`/api/chat/sessions/${sessionId}`),
     feedback: (messageId: number, feedback: "up" | "down", note?: string) =>
       post(`/api/chat/messages/${messageId}/feedback`, { feedback, note }),
+    exportHistory: (sessionIds: number[], format: "pdf" | "txt") =>
+      download(
+        "/api/chat/export",
+        [
+          ...sessionIds.map((id): [string, string] => ["session_id", String(id)]),
+          ["format", format],
+          // getTimezoneOffset() is minutes *behind* UTC; the API wants ahead.
+          ["tz_offset", String(-new Date().getTimezoneOffset())],
+        ],
+        `campusmind-chat.${format}`
+      ),
   },
   profile: {
     me: () => get<Profile>("/api/profile/me"),
@@ -274,6 +304,15 @@ export const api = {
     analytics: () => get<Analytics>("/api/admin/analytics"),
     loginEvents: (params: { role?: string; start?: string; end?: string; page?: string; page_size?: string }) =>
       get<LoginEventPage>("/api/admin/login-events", params),
+    exportUsers: (format: "csv" | "xlsx") =>
+      download(
+        "/api/admin/users/export",
+        [
+          ["format", format],
+          ["tz_offset", String(-new Date().getTimezoneOffset())],
+        ],
+        `campusmind-accounts.${format}`
+      ),
     settings: () => get<WorkspaceSettings>("/api/admin/settings"),
     setFacultyDomain: (faculty_domain: string | null) =>
       put<WorkspaceSettings>("/api/admin/settings/faculty-domain", { faculty_domain }),

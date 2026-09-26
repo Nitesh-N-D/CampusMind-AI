@@ -65,8 +65,9 @@ Candidate retrieval, scoped to college_id
   |   (rag/text.py: tokenizer, stopwords, light suffix folding)
   |-- Query-term coverage (share of the question's terms a chunk contains)
   `-- Cosine similarity over chunk embeddings
-  |   chunks matching no query term are dropped unless a real
-  |   semantic embedder rates them a close paraphrase
+  |   chunks containing under half of the query terms are dropped
+  |   unless a real semantic embedder rates them a close paraphrase
+  |   (cosine >= 0.75); one shared word like "fee" is not evidence
   v
 Score fusion: keyword = 0.6 BM25 + 0.4 coverage; semantic weight
 depends on the provider (lower for the offline local embedder)
@@ -180,6 +181,20 @@ rows they still hold.
 Full column-level detail is readable directly in `backend/app/db/models.py`
 - it's the single source of truth and this document intentionally doesn't
 duplicate every field, since that duplication would drift out of sync.
+
+## Exports
+
+- `app/services/chat_export.py` builds a user's chat history as plain text
+  or PDF (fpdf2). The PDF embeds IBM Plex from the design system, with Noto
+  Sans Tamil/Devanagari as fallback fonts and HarfBuzz text shaping so
+  Tamil and Hindi answers render correctly. Fonts live in
+  `app/assets/fonts/` with their SIL OFL licences.
+- `app/services/user_export.py` builds the admin account list as CSV (UTF-8
+  with BOM so Excel detects the encoding) or `.xlsx` (openpyxl, write-only).
+  Last login is the latest `login_events` row of type `login`.
+- Timestamps are stored in UTC. Both endpoints take `tz_offset` (minutes
+  east of UTC, sent by the browser) and label every time column with the
+  offset used, e.g. `UTC+05:30`.
 
 ## Provider abstraction
 

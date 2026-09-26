@@ -98,6 +98,31 @@ def test_scanned_pdf_falls_back_to_ocr(client, college_and_admin):
     assert "Hall tickets are issued" in " ".join(c.content for c in _chunks(doc["id"]))
 
 
+@pytest.mark.parametrize("filename", ["notice.jpeg", "NOTICE.JPEG", "notice.jpg"])
+def test_jpeg_photos_are_ingested(client, college_and_admin, filename):
+    admin_token, _ = college_and_admin
+    notice = _text_image(["Canteen closes at 9:00 PM on Sundays."], fmt="JPEG")
+    doc = _post(client, admin_token, filename, notice).json()
+    assert doc["status"] == "ready", doc["processing_error"]
+    assert doc["file_type"] == "image"
+    assert "Canteen closes at 9:00 PM" in " ".join(c.content for c in _chunks(doc["id"]))
+
+
+def test_sideways_phone_photo_is_read(client, college_and_admin):
+    admin_token, _ = college_and_admin
+    upright = Image.open(io.BytesIO(_text_image(["Canteen closes at 9:00 PM on Sundays."])))
+    # Phone cameras save the pixels sideways and set EXIF Orientation=6
+    # ("rotate 90 degrees clockwise to display").
+    sideways = upright.convert("RGB").rotate(90, expand=True)
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    buf = io.BytesIO()
+    sideways.save(buf, "JPEG", exif=exif)
+    doc = _post(client, admin_token, "phone_photo.jpeg", buf.getvalue()).json()
+    assert doc["status"] == "ready", doc["processing_error"]
+    assert "Canteen closes at 9:00 PM" in " ".join(c.content for c in _chunks(doc["id"]))
+
+
 def test_pptx_cites_slides_and_reads_tables_and_notes(client, college_and_admin, seed_pdf_path):
     admin_token, _ = college_and_admin
     with open(os.path.join(seed_pdf_path, "placement_orientation.pptx"), "rb") as f:

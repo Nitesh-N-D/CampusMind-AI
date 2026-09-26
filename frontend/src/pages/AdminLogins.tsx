@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
-import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SkeletonList } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorBanner, Input, PageHeader, SkeletonList, Spinner } from "@/components/ui";
 import { api, ApiError, type LoginEventPage } from "@/lib/api";
+import { toastError } from "@/lib/toastStore";
 
 const PAGE_SIZE = 25;
 
@@ -30,6 +31,19 @@ export default function AdminLogins() {
   const [data, setData] = useState<LoginEventPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
+  const [exporting, setExporting] = useState(false);
+
+  const exportAccounts = async () => {
+    setExporting(true);
+    try {
+      await api.admin.exportUsers(exportFormat);
+    } catch (err) {
+      toastError(err instanceof ApiError ? err.message : "Couldn't export accounts. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const rangeInvalid = Boolean(from && to && from > to);
 
@@ -76,6 +90,23 @@ export default function AdminLogins() {
         eyebrow="Admin"
         title="Login activity"
         description="Every successful student and faculty sign-in and registration in your workspace. Times are shown in your local time zone."
+        actions={
+          <div className="flex items-center gap-2" title="Every student and faculty account: name, email, role, status, signup date, and last login">
+            <select
+              value={exportFormat}
+              onChange={(e) => setExportFormat(e.target.value as "csv" | "xlsx")}
+              aria-label="Account export format"
+              className="h-9 text-sm border border-line-strong rounded-[var(--radius-control)] px-2 bg-surface text-ink-800"
+            >
+              <option value="csv">CSV</option>
+              <option value="xlsx">Excel (.xlsx)</option>
+            </select>
+            <Button variant="secondary" onClick={exportAccounts} disabled={exporting} className="!py-2 text-sm">
+              {exporting && <Spinner />}
+              Export accounts
+            </Button>
+          </div>
+        }
       />
 
       <Card className="p-4 sm:p-5 mb-6">

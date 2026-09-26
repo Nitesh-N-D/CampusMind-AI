@@ -27,6 +27,7 @@ TOP_K_FINAL = 6
 SEMANTIC_WEIGHT = 0.6
 LEXICAL_EMBEDDING_WEIGHT = 0.25
 PARAPHRASE_SIMILARITY = 0.75
+MIN_TERM_COVERAGE = 0.5
 RELATIVE_SCORE_CUTOFF = 0.5
 
 SYSTEM_PROMPT = """You are CampusMind AI, an assistant that answers ONLY using the official \
@@ -140,9 +141,12 @@ async def retrieve(
         # one rare word from outranking a chunk that answers the whole question.
         coverage = len(unique_query_terms & set(terms)) / len(unique_query_terms) if unique_query_terms else 0.0
 
-        # Off-topic filter: a chunk must share at least one real term with the
-        # question, unless a semantic model finds it a close paraphrase.
-        if coverage == 0 and not (embedder.is_semantic and semantic >= PARAPHRASE_SIMILARITY):
+        # Off-topic filter: a chunk must contain at least half of the
+        # question's terms, unless a semantic model finds it a close
+        # paraphrase. Sharing one word ("fee" in "parking fee for staff cars")
+        # isn't evidence - and embedding models score every chunk from the
+        # same college 0.55-0.70, so raw similarity alone can't be either.
+        if coverage < MIN_TERM_COVERAGE and not (embedder.is_semantic and semantic >= PARAPHRASE_SIMILARITY):
             continue
 
         keyword = 0.6 * keyword_norm + 0.4 * coverage

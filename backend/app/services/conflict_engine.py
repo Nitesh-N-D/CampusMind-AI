@@ -71,8 +71,8 @@ def detect_conflicts(
             continue
 
         a, b = doc_matches[0], doc_matches[1]
-        doc_a = db.query(models.Document).get(a.chunk.document_id)
-        doc_b = db.query(models.Document).get(b.chunk.document_id)
+        doc_a = db.get(models.Document, a.chunk.document_id)
+        doc_b = db.get(models.Document, b.chunk.document_id)
         if not doc_a or not doc_b or a.value == b.value:
             continue
 

@@ -7,7 +7,7 @@ import { api, ApiError, type ChatMessageOut, type ChatSessionOut, type Citation 
 import { useAuthStore } from "@/lib/authStore";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { toastError } from "@/lib/toastStore";
-import { conversationToMarkdown, downloadMarkdown } from "@/lib/exportConversation";
+import { ChatExportDialog } from "@/components/ChatExportDialog";
 
 const SUGGESTIONS_BY_ROLE: Record<string, string[]> = {
   student: [
@@ -49,13 +49,6 @@ interface LocalMessage {
   conflicts?: { topic: string; value_a: string; value_b: string; reasoning: string }[];
   abstained?: boolean;
   pending?: boolean;
-}
-
-function confidenceLevel(score: number): TrustLevel {
-  if (score >= 80) return "very_high";
-  if (score >= 60) return "high";
-  if (score >= 35) return "medium";
-  return "low";
 }
 
 export default function Chat() {
@@ -170,21 +163,8 @@ export default function Chat() {
     }
   };
 
-  const exportConversation = () => {
-    const currentSession = sessions.find((s) => s.id === activeSession);
-    const md = conversationToMarkdown(
-      messages.filter((m) => !m.pending),
-      {
-        collegeName,
-        exportedBy: fullName,
-        sessionTitle: currentSession?.title,
-      }
-    );
-    const filename = `campusmind-conversation-${new Date().toISOString().slice(0, 10)}.md`;
-    downloadMarkdown(md, filename);
-  };
-
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Grow the composer with its content, up to a cap, like any chat app.
@@ -322,11 +302,11 @@ export default function Chat() {
                 </option>
               ))}
             </select>
-            {messages.some((m) => !m.pending) && (
+            {!isAdmin && sessions.length > 0 && (
               <button
-                onClick={exportConversation}
-                aria-label="Export conversation"
-                title="Export conversation as Markdown"
+                onClick={() => setExportOpen(true)}
+                aria-label="Download chat history"
+                title="Download chat history (PDF or .txt)"
                 className="h-8 w-8 shrink-0 flex items-center justify-center rounded-[var(--radius-control)] text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -357,7 +337,7 @@ export default function Chat() {
                       ? "This assistant is built for your students and faculty. Ask a test question to confirm an upload is retrieved and cited correctly - admin test questions aren't counted in usage analytics."
                       : `Answers come only from ${collegeName ?? "your college"}'s official documents, with a citation for every source.`}
                   </p>
-                  <div className="grid sm:grid-cols-2 gap-2.5 mt-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-8">
                     {suggestions.map((s) => (
                       <button
                         key={s}
@@ -444,6 +424,9 @@ export default function Chat() {
           </div>
         </section>
       </div>
+      {exportOpen && (
+        <ChatExportDialog sessions={sessions} activeSession={activeSession} onClose={() => setExportOpen(false)} />
+      )}
     </AppShell>
   );
 }
@@ -601,6 +584,4 @@ function MessageBubble({
     </div>
   );
 }
-
-export { confidenceLevel };
 

@@ -75,9 +75,15 @@ their rows. Back up first if you want to keep that data.
 6. Click **Create Web Service**. Wait for the build and deploy to finish.
    The OCR dependencies (`rapidocr-onnxruntime`, which pulls in
    `onnxruntime` and `opencv-python`) make this a fairly large install, so
-   the first build takes longer than a plain FastAPI app.
-7. Once live, visit `https://your-service.onrender.com/api/health` to
-   confirm it responds with `{"status":"ok",...}`.
+   the first build takes longer than a plain FastAPI app. `uharfbuzz`
+   (text shaping for Tamil/Hindi in chat PDF exports) ships prebuilt Linux
+   wheels, so no compiler is needed. The PDF fonts are committed under
+   `backend/app/assets/fonts/`, so nothing is downloaded at runtime.
+7. Once live, visit `https://your-service.onrender.com/api/health`. A
+   `401 {"detail":"Not authenticated"}` response confirms the API is up -
+   the health check requires sign-in by design. Leave Render's "Health
+   Check Path" blank (or point it at `/docs`); a path returning 401 would
+   be treated as unhealthy.
 
 **Free tier note**: Render's free web services spin down after 15 minutes
 of inactivity. The first request after idle takes ~30-50 seconds to wake

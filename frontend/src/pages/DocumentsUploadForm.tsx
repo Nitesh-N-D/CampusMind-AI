@@ -97,7 +97,7 @@ export function UploadForm({
     });
     setError(
       rejected.length
-        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), and images (.jpg, .png), up to ${MAX_UPLOAD_MB}MB each.`
+        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), and images (.jpg, .jpeg, .png), up to ${MAX_UPLOAD_MB}MB each.`
         : null
     );
     if (accepted.length === 0) return;
@@ -207,7 +207,7 @@ export function UploadForm({
         </svg>
         <p className="text-sm font-medium text-ink-800">Drag files here, or click to browse</p>
         <p className="text-xs text-ink-400 max-w-md">
-          PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .png), up to {MAX_UPLOAD_MB}MB each.
+          PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .jpeg, .png), up to {MAX_UPLOAD_MB}MB each.
           Images and scanned PDFs are read with text recognition.
         </p>
         <input
@@ -268,7 +268,7 @@ export function UploadForm({
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-4 mt-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
         <Select label="Document type (applies to all)" value={documentType} onChange={(e) => setDocumentType(e.target.value)}>
           {DOC_TYPES.map((t) => (
             <option key={t.value} value={t.value}>

@@ -42,7 +42,7 @@ export default function AdminDashboard() {
           <Skeleton className="h-8 w-64 mb-2" />
           <Skeleton className="h-4 w-96 max-w-full" />
         </div>
-        <div className="grid lg:grid-cols-[280px_1fr] gap-6 mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mb-10">
           <div className="bg-surface border border-line rounded-[var(--radius-card)] p-7 flex flex-col items-center justify-center gap-4">
             <Skeleton className="w-36 h-36 rounded-full" />
             <Skeleton className="h-5 w-20" />
@@ -56,7 +56,7 @@ export default function AdminDashboard() {
             ))}
           </div>
         </div>
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[0, 1].map((i) => (
             <div key={i} className="bg-surface border border-line rounded-[var(--radius-card)] p-6">
               <Skeleton className="h-4 w-40 mb-5" />
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
         description="A single score summarizing how verified, current, and conflict-free your college's document set is right now."
       />
 
-      <div className="grid lg:grid-cols-[280px_1fr] gap-6 mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mb-10">
         <Card className="p-7 flex flex-col items-center justify-center text-center">
           <div className="relative w-36 h-36">
             <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
         </Link>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h2 className="font-medium text-ink-900 mb-1">Usage, last 30 days</h2>
           <div className="grid grid-cols-3 gap-4 mt-4">
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
             <ul className="space-y-2">
               {analytics.top_queries.map((q) => (
                 <li key={q.query} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-700 truncate pr-3">{q.query}</span>
+                  <span className="text-ink-700 truncate min-w-0 pr-3">{q.query}</span>
                   <span className="text-ink-400 shrink-0" style={{ fontFamily: "var(--font-mono)" }}>
                     {q.count}x
                   </span>
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
             <ul className="space-y-3">
               {analytics.recent_uploads.map((d) => (
                 <li key={d.id} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-700 truncate pr-3">{d.title}</span>
+                  <span className="text-ink-700 truncate min-w-0 pr-3">{d.title}</span>
                   <Badge tone={d.status === "ready" ? "teal" : d.status === "archived" ? "neutral" : "amber"}>
                     {d.status}
                   </Badge>

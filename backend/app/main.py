@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import admin, auth, chat, documents, profile
 from app.core.config import settings
 from app.core.logging_config import configure_logging, logger
+from app.core.security import get_current_user
 from app.db.database import Base, engine
 from app.db.migrations import apply_migrations
 
@@ -30,6 +31,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Lets the browser read the server-chosen filename on file downloads.
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -139,6 +142,8 @@ app.include_router(profile.router)
 app.include_router(admin.router)
 
 
-@app.get("/api/health")
+# Signed-in only and deliberately minimal: no provider, environment, or
+# version details for anyone probing the API.
+@app.get("/api/health", dependencies=[Depends(get_current_user)])
 def health():
-    return {"status": "ok", "ai_provider": settings.ai_provider, "environment": settings.environment}
+    return {"status": "ok"}

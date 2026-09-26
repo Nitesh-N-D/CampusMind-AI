@@ -1,6 +1,8 @@
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -9,8 +11,14 @@ from app.db.database import get_db
 from app.rag.pipeline import answer_question
 from app.schemas.schemas import ChatRequest, ChatResponse, FeedbackRequest
 from app.services.ai_provider import get_ai_provider
+from app.services.chat_export import build_pdf, build_txt
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+
+def _utc(value: Optional[datetime]) -> Optional[datetime]:
+    # Stored naive UTC; mark it so browsers don't read it as local time.
+    return value.replace(tzinfo=timezone.utc) if value else None
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -102,7 +110,35 @@ def list_sessions(db: Session = Depends(get_db), user: models.User = Depends(get
         .order_by(models.ChatSession.created_at.desc())
         .all()
     )
-    return [{"id": s.id, "title": s.title, "created_at": s.created_at} for s in sessions]
+    return [{"id": s.id, "title": s.title, "created_at": _utc(s.created_at)} for s in sessions]
+
+
+@router.get("/export")
+def export_conversations(
+    session_id: List[int] = Query(..., min_length=1, max_length=50),
+    fmt: Literal["pdf", "txt"] = Query("pdf", alias="format"),
+    tz_offset: int = Query(0, ge=-840, le=840, description="Reader's offset from UTC, in minutes"),
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    wanted = set(session_id)
+    sessions = (
+        db.query(models.ChatSession)
+        .filter(models.ChatSession.id.in_(wanted), models.ChatSession.user_id == user.id)
+        .order_by(models.ChatSession.created_at, models.ChatSession.id)
+        .all()
+    )
+    # Someone else's conversation looks exactly like a missing one.
+    if len(sessions) != len(wanted):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    build = build_pdf if fmt == "pdf" else build_txt
+    content, filename = build(user, sessions, tz_offset)
+    return Response(
+        content=content,
+        media_type="application/pdf" if fmt == "pdf" else "text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/sessions/{session_id}/messages")
@@ -122,7 +158,7 @@ def get_messages(
             "citations": m.citations,
             "confidence": m.confidence,
             "has_conflict": m.has_conflict,
-            "created_at": m.created_at,
+            "created_at": _utc(m.created_at),
         }
         for m in session.messages
     ]

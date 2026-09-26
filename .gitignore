@@ -16,7 +16,11 @@ venv/
 backend/campusmind.db
 backend/test_campusmind.db
 backend/uploads/
+backend/test_uploads/
 backend/.env
+# Local verification runs (isolated SQLite DB, uploads, screenshots)
+backend/.verify/
+frontend/.verify/
 
 # ================================
 # Node / Frontend

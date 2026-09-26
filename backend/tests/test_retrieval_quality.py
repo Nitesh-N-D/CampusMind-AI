@@ -98,6 +98,50 @@ def test_unrelated_question_is_not_answered_from_random_documents(client, studen
     assert body["abstained"] is True
 
 
+def test_one_shared_word_is_not_enough_to_answer(client, student_token, knowledge_base):
+    # "fee" appears in the bus, exam, and library documents, but none of them
+    # says anything about parking.
+    body = _ask(client, student_token, "What is the parking fee for staff cars in the basement?")
+    assert body["abstained"] is True
+    assert body["citations"] == []
+
+
+class _FakeSemanticEmbedder:
+    is_semantic = True
+
+    async def embed(self, text):
+        return [1.0]
+
+
+def _semantic_similarity(monkeypatch, similarity):
+    # Stands in for a real embedding model: every chunk gets the same cosine
+    # similarity to the question.
+    from app.rag import pipeline
+
+    monkeypatch.setattr(pipeline, "get_embedding_provider", lambda: _FakeSemanticEmbedder())
+    monkeypatch.setattr(pipeline, "cosine_similarity", lambda a, b: similarity)
+
+
+def test_semantic_background_similarity_does_not_pad_citations(client, student_token, knowledge_base, monkeypatch):
+    # Measured with Gemini embeddings: unrelated chunks from the same college
+    # score 0.55-0.70 against a question. That band must not count as evidence.
+    _semantic_similarity(monkeypatch, 0.68)
+    body = _ask(client, student_token, "When does the bus from Tambaram leave?")
+    assert {c["document_title"] for c in body["citations"]} == {"College Bus Schedule"}
+
+    body = _ask(client, student_token, "What is the parking fee for staff cars in the basement?")
+    assert body["abstained"] is True
+    assert body["citations"] == []
+
+
+def test_semantic_close_paraphrase_is_still_answered(client, student_token, knowledge_base, monkeypatch):
+    # No shared terms at all, but a real model rates it a close paraphrase.
+    _semantic_similarity(monkeypatch, 0.9)
+    body = _ask(client, student_token, "Where can I grab supper?")
+    assert body["abstained"] is False
+    assert body["citations"]
+
+
 def test_keyword_normalization_folds_inflections_and_drops_glue_words():
     from app.rag.text import content_terms
 

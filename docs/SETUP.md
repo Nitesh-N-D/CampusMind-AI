@@ -50,8 +50,9 @@ python3 -m uvicorn app.main:app --reload --port 8000
 ```
 
 Check it's alive: open <http://localhost:8000/api/health> - you should see
-`{"status":"ok",...}`. The full interactive API reference is at
-<http://localhost:8000/docs>.
+`{"detail":"Not authenticated"}` (a 401). That's expected: the health check
+requires sign-in and, once signed in, returns only `{"status":"ok"}`. The
+full interactive API reference is at <http://localhost:8000/docs>.
 
 ### 2a. Optional: enable profile picture uploads (Cloudinary)
 
@@ -139,8 +140,8 @@ Outputs a static site to `frontend/dist/`. Preview it locally with
    cite both, with a visible trust score on each. Ask "What are the hostel
    mess timings?" to see a section citation from the Word file.
 8. Try the microphone icon in the composer (if your browser supports it -
-   Chrome and Edge do) and exporting the conversation from the download
-   icon in the conversation header.
+   Chrome and Edge do) and the download icon in the conversation header,
+   which saves your conversations as a PDF or .txt file.
 9. Sign back in as admin, go to **Conflicts**, and resolve the one you just
    triggered.
 10. Check **Knowledge health** - the score and document counts should

@@ -3,7 +3,7 @@
 ## Authentication & authorization coverage (audited)
 
 Every route in `app/api/` was checked programmatically for an auth
-dependency. Result: all 24 API routes require a valid JWT via
+dependency. Result: all 27 `/api` routes (26 in `app/api/` plus `/api/health`) require a valid JWT via
 `get_current_user` or `require_role(...)`, except the three that are
 supposed to be public - `POST /api/auth/register-college`,
 `POST /api/auth/register-student`, `POST /api/auth/login` - which is
@@ -17,10 +17,10 @@ backend's independent, unconditional JWT check on every protected route,
 confirmed by `tests/test_auth.py::test_unauthenticated_request_rejected`
 and equivalent checks throughout the suite.
 
-The one other public route is `GET /api/health` in `app/main.py`, a
-liveness probe. It returns no user or college data, but it does report the
-configured AI provider name and environment; trim it if you'd rather not
-expose that.
+`GET /api/health` in `app/main.py` also requires a signed-in user and
+returns only `{"status": "ok"}` - no provider, environment, or version
+details (`tests/test_error_handling.py::test_health_requires_sign_in_and_reveals_nothing`).
+An unauthenticated probe gets `401`, which still proves the server is up.
 
 ## Authentication
 
@@ -142,6 +142,22 @@ expose that.
   and admin logins are not recorded. No IP address or device data is kept.
 - Only admins of the same college can read it (`GET /api/admin/login-events`).
   This is disclosed to users on the Privacy page.
+
+## Exports
+
+- **Chat history** (`GET /api/chat/export`, any signed-in user): the query
+  filters on both the requested session IDs and `user_id = current user`,
+  and returns `404` unless every requested ID matched. Asking for someone
+  else's conversation - alone or mixed in with your own - reveals nothing,
+  not even whether it exists (`tests/test_chat_export.py`).
+- **Accounts** (`GET /api/admin/users/export`, `require_role("admin")`):
+  only student and faculty accounts in the admin's own college. Columns are
+  name, email, role, status, signup date, last login; password hashes are
+  never read into the export (`tests/test_user_export.py` checks both
+  formats). CSV cells starting with `=`, `+`, `-`, `@`, tab or CR are
+  prefixed with `'` so a spreadsheet won't run them as formulas.
+- `Content-Disposition` is exposed through CORS so the browser can use the
+  server's filename; no other response headers are exposed.
 
 ## Known gaps for a production rollout
 

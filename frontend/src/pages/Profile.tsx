@@ -144,7 +144,7 @@ export default function Profile() {
           {[0, 1, 2].map((i) => (
             <div key={i} className="bg-surface border border-line rounded-[var(--radius-card)] p-6">
               <Skeleton className="h-4 w-32 mb-5" />
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Skeleton className="h-11 w-full" />
                 <Skeleton className="h-11 w-full" />
               </div>
@@ -203,7 +203,7 @@ export default function Profile() {
           <Card className="p-6">
             <h2 className="font-medium text-ink-900 mb-4">Identity</h2>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Full name"
                 value={identity.full_name}
@@ -231,14 +231,14 @@ export default function Profile() {
           {isAdmin ? (
             <Card className="p-6">
               <h2 className="font-medium text-ink-900 mb-4">Preferences</h2>
-              <div className="grid sm:grid-cols-2 gap-4">{languageSelect}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{languageSelect}</div>
               {saveRow}
             </Card>
           ) : (
             <>
             <Card className="p-6">
               <h2 className="font-medium text-ink-900 mb-4">Academic context</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Department"
                   placeholder="CSE"

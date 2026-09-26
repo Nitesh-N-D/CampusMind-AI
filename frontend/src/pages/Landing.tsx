@@ -158,7 +158,7 @@ export default function Landing() {
             One focused assistant, built on your official documents.
           </h2>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {FEATURES.map((f) => (
             <div key={f.title} className="bg-surface border border-line rounded-[var(--radius-card)] p-5">
               <h3 className="font-medium text-ink-900">{f.title}</h3>

@@ -23,7 +23,7 @@ without touching code or infrastructure.
 | **Personalized context** | Students set department/year/semester once; retrieval ranks around what's relevant to them. Fully editable and deletable - see `docs/SECURITY.md`. |
 | **Role separation** | Students and faculty get a focused chat-first experience; only admins see and manage the document library. Students and faculty see documents only through cited answers. |
 | **Faculty-domain gating** | Faculty can only sign up with an email on a faculty domain the admin has set in Settings. Until an admin sets one, faculty signup at that college is closed with a clear message. |
-| **Multi-format ingestion** | PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx - each slide is cited by number and title, speaker notes included), CSV, plain text, and images (.jpg/.png). Scanned PDF pages and photos of notices are read with on-device OCR (RapidOCR - no system install). Renamed, corrupt, empty, or unsupported files are rejected with a specific message. |
+| **Multi-format ingestion** | PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx - each slide is cited by number and title, speaker notes included), CSV, plain text, and images (.jpg/.jpeg/.png). Scanned PDF pages and photos of notices are read with on-device OCR (RapidOCR - no system install). Renamed, corrupt, empty, or unsupported files are rejected with a specific message. |
 | **Hybrid retrieval** | BM25 over stemmed terms (title + section heading + text), query-term coverage, and embedding similarity, trust- and recency-weighted. Unrelated questions abstain instead of citing a loosely related document. |
 | **AI Campus Copilot** | Handles task-style requests ("summarize the latest placement circular", "give me a checklist for registration") not just lookup questions. |
 | **Admin command center** | Knowledge Health score, conflict queue, usage analytics, verification workflow, and a login-activity log. |
@@ -37,7 +37,8 @@ without touching code or infrastructure.
 |---|---|
 | **Account menu** | One avatar menu in the top-right of every signed-in page for profile, light/dark theme, and sign-out. |
 | **Voice input** | Ask questions by speaking, in English, Tamil, or Hindi, via the browser's native Web Speech API - degrades gracefully with a clear message on unsupported browsers rather than a broken button. |
-| **Conversation export** | Download any chat as a clean Markdown file with citations and confidence scores intact - useful for keeping a record of an official answer. |
+| **Chat history download** | Students and faculty download their own conversations (the current one or any selection of past ones) as a PDF or plain-text file, with their name, college, the time of every message, and the sources each answer cited. |
+| **Account export** | Admins download every student and faculty account in their college (name, email, role, status, signup date, last login) as CSV or Excel from the Login activity page. Password hashes are never included. |
 | **Bulk document upload** | Drag and drop many files at once, in any supported format, with per-file title editing, sequential upload (kind to free-tier AI rate limits), and live per-file status including the reason a file failed. |
 
 ---
@@ -119,7 +120,7 @@ This is a working prototype covering the full core loop (auth, multi-tenant
 isolation, three roles - student/faculty/admin - with faculty-domain gating,
 multi-format ingestion with OCR, RAG chat, trust scoring, temporal
 retrieval, conflict detection, admin dashboard, login analytics, light/dark
-theming) with a 100-test backend suite (`backend/tests/`) covering auth,
+theming) with a 124-test backend suite (`backend/tests/`) covering auth,
 RBAC across all three roles, tenant isolation, ingestion of every supported
 format, retrieval quality, login analytics, and the RAG/conflict pipeline.
 Not yet built: streaming responses, and multilingual answers without an AI

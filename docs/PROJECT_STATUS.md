@@ -63,13 +63,14 @@ re-duplicated here to avoid drift.
 Working end-to-end today: auth (JWT + bcrypt) with server-side RBAC across
 three roles (admin/student/faculty); domain-restricted college signup with
 faculty-domain gating; multi-format ingestion (PDF, .docx, .xlsx, .pptx, .csv,
-.txt, .jpg/.png) with OCR and trust/temporal/versioning metadata; RAG chat
+.txt, .jpg/.jpeg/.png) with OCR and trust/temporal/versioning metadata; RAG chat
 with page/section citations, trust scores, and conflict banners; conflict
 detection + admin resolution workflow; admin command center (Knowledge
 Health score, usage analytics, conflict queue); admin login analytics
 (student/faculty sign-ins and registrations, filterable by role and date
 range, paginated); voice input (English/Tamil/Hindi via the Web Speech API);
-Markdown conversation export; bulk drag-and-drop upload; Cloudinary-backed
+chat history download (PDF/.txt, own conversations only); admin account
+export (CSV/.xlsx, own college only); bulk drag-and-drop upload; Cloudinary-backed
 profile pictures (clean 503 when unconfigured, no silent local-disk
 fallback); light/dark theming via CSS custom properties; an account menu in
 a consistent header; Privacy Policy/Terms pages; a global error-handling
@@ -106,12 +107,17 @@ backend/app/
   services/conflict_engine.py     Feature 3 - cross-document contradiction
                                   detection
   services/cloudinary_service.py  Profile picture upload/validation
+  services/chat_export.py    Chat history PDF/.txt builder
+  services/user_export.py    Admin account CSV/.xlsx builder
+  assets/fonts/              IBM Plex + Noto Tamil/Devanagari (SIL OFL,
+                             licence files alongside) for PDF exports
 backend/tests/               conftest.py (fixtures), test_auth.py,
                              test_error_handling.py, test_faculty_domain.py,
                              test_ingestion_formats.py, test_login_events.py,
                              test_migrations.py, test_profile.py, test_rag.py,
-                             test_retrieval_quality.py, test_roles.py
-                             (100 tests)
+                             test_retrieval_quality.py, test_roles.py,
+                             test_chat_export.py, test_user_export.py
+                             (124 tests)
 backend/seed_data/           Demo documents in every supported format, all
                              labelled as fictional, plus
                              make_format_samples.py to regenerate them
@@ -125,10 +131,10 @@ frontend/src/
                              Privacy, Terms, NotFound)
   layouts/                   AppShell, AuthLayout, LegalLayout
   components/                Seal (trust badge), UserMenu, ThemeToggle,
-                             ToastContainer, RouteGuards, Brand, ui
+                             ToastContainer, RouteGuards, Brand, ui,
+                             ChatExportDialog
   lib/                       api.ts (axios client), authStore.ts,
-                             themeStore.ts, toastStore.ts,
-                             exportConversation.ts
+                             themeStore.ts, toastStore.ts
   hooks/useVoiceInput.ts     Web Speech API wrapper
   index.css                  Design system: CSS custom properties,
                              navy/paper/violet palette, dark overrides
@@ -146,7 +152,8 @@ CLAUDE.md                    Working rules for Claude Code in this repo
 python-docx 1.2 (Word), python-pptx 1.0 (PowerPoint), openpyxl 3.1 (Excel), rapidocr-onnxruntime 1.4 +
 onnxruntime 1.30 (OCR; pulls in opencv-python as a dependency), rank-bm25
 0.2.2, numpy 2.4, httpx 0.27, tenacity 8.5 (retries), cloudinary 1.45 +
-Pillow 12.1 (profile pictures and image handling), psycopg[binary] 3.2
+Pillow 12.1 (profile pictures and image handling), fpdf2 2.8 + uharfbuzz
+0.56 (chat PDF export with Tamil/Hindi text shaping), psycopg[binary] 3.2
 (Postgres driver for production). Database: SQLite by default, Postgres via
 `DATABASE_URL` with no code changes. AI/embeddings: pluggable Gemini /
 OpenAI / Claude / local-mock via `AI_PROVIDER` and `EMBEDDING_PROVIDER` in
@@ -160,18 +167,18 @@ v4.3 (via `@tailwindcss/vite`), oxlint 1.75 (linting).
 
 Verified on 2026-09-26:
 
-- **Backend test suite: 100/100 passing** (`python -m pytest tests/ -v`):
+- **Backend test suite: 124/124 passing** (`python -m pytest tests/ -v`):
   auth, RBAC across all three roles, faculty-domain gating, tenant
   isolation, ingestion of every supported format (including OCR and
   corrupt/renamed/empty files), retrieval quality on 14 labeled questions,
-  login analytics filtering/pagination/isolation, migrations, and the
-  RAG/conflict pipeline.
+  login analytics filtering/pagination/isolation, migrations, the
+  RAG/conflict pipeline, chat history export (including an ownership
+  tamper test), and admin account export (including cross-college scoping).
 - **Frontend build: clean**, zero errors and zero warnings (`npm run build`).
-- **Lint** (`npm run lint`): zero errors; two pre-existing
-  `only-export-components` warnings (`Seal.tsx`, `Chat.tsx`).
+- **Lint** (`npm run lint`): zero errors, zero warnings.
 - **Route audit**: every route in `app/api/*.py` has `get_current_user` or
   `require_role(...)` except the 3 public auth endpoints; `/api/health` in
-  `main.py` is a public liveness probe.
+  `main.py` also requires sign-in and returns only `{"status":"ok"}`.
 
 Partially built: multilingual chat (the `language` parameter is wired
 end-to-end, but real translation is untested against a live AI key); RAG
@@ -197,9 +204,6 @@ pipeline.
   context change keep their old vectors until re-uploaded.
 - **OCR footprint**: onnxruntime and opencv add a large install; the OCR
   model loads on first use (several seconds), then stays cached.
-- **`/api/health` is public** and reports the configured AI provider name
-  and environment. It reveals no secrets, but consider trimming it if that
-  is more than you want public.
 - **SQLite default** is not appropriate for concurrent production writes;
   `DATABASE_URL` swap to Postgres is supported but not yet exercised
   against a live deployment.
@@ -217,7 +221,7 @@ python3 -m venv venv && source venv/bin/activate   # or venv\Scripts\activate on
 pip install -r requirements.txt
 cp .env.example .env                                # then add a Gemini key
 uvicorn app.main:app --reload --port 8000           # dev server, http://localhost:8000
-python -m pytest tests/ -v                          # full test suite (100 tests)
+python -m pytest tests/ -v                          # full test suite (124 tests)
 ```
 
 **Frontend**

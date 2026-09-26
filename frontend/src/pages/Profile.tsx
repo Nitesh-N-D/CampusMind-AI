@@ -94,18 +94,23 @@ export default function Profile() {
     setSaved(false);
     setError(null);
     try {
-      const updated = await api.profile.update({
-        department: profile.department || undefined,
-        year: profile.year ?? undefined,
-        semester: profile.semester ?? undefined,
-        section: profile.section || undefined,
-        academic_batch: profile.academic_batch || undefined,
-        interests: interestsInput
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        preferred_language: profile.preferred_language,
-      });
+      // Admins have no academic context - the API rejects those fields for them.
+      const updated = await api.profile.update(
+        profile.role === "admin"
+          ? { preferred_language: profile.preferred_language }
+          : {
+              department: profile.department || undefined,
+              year: profile.year ?? undefined,
+              semester: profile.semester ?? undefined,
+              section: profile.section || undefined,
+              academic_batch: profile.academic_batch || undefined,
+              interests: interestsInput
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+              preferred_language: profile.preferred_language,
+            },
+      );
       setProfile(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -150,12 +155,41 @@ export default function Profile() {
     );
   }
 
+  const isAdmin = profile?.role === "admin";
+
+  const languageSelect = profile && (
+    <Select
+      label="Preferred response language"
+      value={profile.preferred_language}
+      onChange={(e) => setProfile({ ...profile, preferred_language: e.target.value })}
+    >
+      {LANGUAGES.map((l) => (
+        <option key={l.code} value={l.code}>
+          {l.label}
+        </option>
+      ))}
+    </Select>
+  );
+
+  const saveRow = (
+    <div className="flex items-center gap-3 mt-6">
+      <Button onClick={save} disabled={saving}>
+        {saving ? "Saving..." : "Save changes"}
+      </Button>
+      {saved && <span className="text-sm text-seal-teal-700">Saved</span>}
+    </div>
+  );
+
   return (
     <AppShell>
       <PageHeader
         eyebrow="Your account"
         title="Profile"
-        description="This context personalizes your answers - CampusMind AI prioritizes results relevant to your department and year."
+        description={
+          isAdmin
+            ? "Your name and preferences for this workspace."
+            : "This context personalizes your answers - CampusMind AI prioritizes results relevant to your department and year."
+        }
       />
 
       {error && (
@@ -194,91 +228,86 @@ export default function Profile() {
             </div>
           </Card>
 
-          <Card className="p-6">
-            <h2 className="font-medium text-ink-900 mb-4">Academic context</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Input
-                label="Department"
-                placeholder="CSE"
-                value={profile.department ?? ""}
-                onChange={(e) => setProfile({ ...profile, department: e.target.value })}
-              />
-              <Select
-                label="Year"
-                value={profile.year ?? ""}
-                onChange={(e) => setProfile({ ...profile, year: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="">Not set</option>
-                {[1, 2, 3, 4, 5].map((y) => (
-                  <option key={y} value={y}>
-                    Year {y}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="Semester"
-                value={profile.semester ?? ""}
-                onChange={(e) =>
-                  setProfile({ ...profile, semester: e.target.value ? Number(e.target.value) : null })
-                }
-              >
-                <option value="">Not set</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                  <option key={s} value={s}>
-                    Sem {s}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Section"
-                placeholder="A"
-                value={profile.section ?? ""}
-                onChange={(e) => setProfile({ ...profile, section: e.target.value })}
-              />
-              <Input
-                label="Academic batch"
-                placeholder="2024-2028"
-                value={profile.academic_batch ?? ""}
-                onChange={(e) => setProfile({ ...profile, academic_batch: e.target.value })}
-              />
-              <Select
-                label="Preferred response language"
-                value={profile.preferred_language}
-                onChange={(e) => setProfile({ ...profile, preferred_language: e.target.value })}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="mt-4">
-              <Input
-                label="Interests (comma-separated)"
-                placeholder="AI, MLOps, Robotics"
-                value={interestsInput}
-                onChange={(e) => setInterestsInput(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-3 mt-6">
-              <Button onClick={save} disabled={saving}>
-                {saving ? "Saving..." : "Save changes"}
-              </Button>
-              {saved && <span className="text-sm text-seal-teal-700">Saved</span>}
-            </div>
-          </Card>
+          {isAdmin ? (
+            <Card className="p-6">
+              <h2 className="font-medium text-ink-900 mb-4">Preferences</h2>
+              <div className="grid sm:grid-cols-2 gap-4">{languageSelect}</div>
+              {saveRow}
+            </Card>
+          ) : (
+            <>
+            <Card className="p-6">
+              <h2 className="font-medium text-ink-900 mb-4">Academic context</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Input
+                  label="Department"
+                  placeholder="CSE"
+                  value={profile.department ?? ""}
+                  onChange={(e) => setProfile({ ...profile, department: e.target.value })}
+                />
+                <Select
+                  label="Year"
+                  value={profile.year ?? ""}
+                  onChange={(e) => setProfile({ ...profile, year: e.target.value ? Number(e.target.value) : null })}
+                >
+                  <option value="">Not set</option>
+                  {[1, 2, 3, 4, 5].map((y) => (
+                    <option key={y} value={y}>
+                      Year {y}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  label="Semester"
+                  value={profile.semester ?? ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, semester: e.target.value ? Number(e.target.value) : null })
+                  }
+                >
+                  <option value="">Not set</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                    <option key={s} value={s}>
+                      Sem {s}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  label="Section"
+                  placeholder="A"
+                  value={profile.section ?? ""}
+                  onChange={(e) => setProfile({ ...profile, section: e.target.value })}
+                />
+                <Input
+                  label="Academic batch"
+                  placeholder="2024-2028"
+                  value={profile.academic_batch ?? ""}
+                  onChange={(e) => setProfile({ ...profile, academic_batch: e.target.value })}
+                />
+                {languageSelect}
+              </div>
+              <div className="mt-4">
+                <Input
+                  label="Interests (comma-separated)"
+                  placeholder="AI, MLOps, Robotics"
+                  value={interestsInput}
+                  onChange={(e) => setInterestsInput(e.target.value)}
+                />
+              </div>
+              {saveRow}
+            </Card>
 
-          <Card className="p-6">
-            <h2 className="font-medium text-ink-900 mb-1.5">Privacy</h2>
-            <p className="text-sm text-ink-500 mb-4">
-              You're always in control of your personalization data. Clearing it won't delete your
-              account, conversation history, or name.
-            </p>
-            <Button variant="danger" onClick={clearPersonalization}>
-              Clear academic context
-            </Button>
-          </Card>
+            <Card className="p-6">
+              <h2 className="font-medium text-ink-900 mb-1.5">Privacy</h2>
+              <p className="text-sm text-ink-500 mb-4">
+                You're always in control of your personalization data. Clearing it won't delete your
+                account, conversation history, or name.
+              </p>
+              <Button variant="danger" onClick={clearPersonalization}>
+                Clear academic context
+              </Button>
+            </Card>
+            </>
+          )}
         </div>
       )}
     </AppShell>

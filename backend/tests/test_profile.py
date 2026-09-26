@@ -125,3 +125,38 @@ def test_avatar_upload_requires_auth(client):
         files={"file": ("avatar.jpg", jpeg_bytes, "image/jpeg")},
     )
     assert resp.status_code == 401
+
+
+def test_admin_cannot_set_academic_details(client, college_and_admin):
+    admin_token, _ = college_and_admin
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    for body in ({"year": 2}, {"academic_batch": "2024-2028"}, {"interests": ["AI"]}, {"department": "CSE"}):
+        resp = client.put("/api/profile/me", headers=headers, json=body)
+        assert resp.status_code == 400, body
+    profile = client.get("/api/profile/me", headers=headers).json()
+    assert profile["year"] is None
+    assert profile["academic_batch"] is None
+    assert profile["interests"] == []
+
+
+def test_admin_can_still_update_name_and_language(client, college_and_admin):
+    admin_token, _ = college_and_admin
+    resp = client.put(
+        "/api/profile/me",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"full_name": "Dr. Admin Two", "preferred_language": "ta"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["full_name"] == "Dr. Admin Two"
+    assert resp.json()["preferred_language"] == "ta"
+
+
+def test_student_can_still_set_academic_details(client, student_token):
+    resp = client.put(
+        "/api/profile/me",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={"year": 2, "academic_batch": "2024-2028", "interests": ["AI"]},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["year"] == 2
+    assert resp.json()["interests"] == ["AI"]

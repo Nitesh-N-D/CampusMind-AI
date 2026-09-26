@@ -15,6 +15,10 @@ from app.services.cloudinary_service import (
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
+# Personalization fields that only mean something for students and faculty.
+# Admins manage the workspace; chat never personalizes their answers.
+ACADEMIC_FIELDS = {"department", "year", "semester", "section", "academic_batch", "interests"}
+
 
 def _to_profile_out(user: models.User) -> ProfileOut:
     return ProfileOut(
@@ -45,7 +49,12 @@ def update_profile(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if user.role == models.UserRole.ADMIN and ACADEMIC_FIELDS & changes.keys():
+        raise HTTPException(
+            status_code=400, detail="Admin accounts don't have academic details."
+        )
+    for field, value in changes.items():
         setattr(user, field, value)
     db.commit()
     db.refresh(user)

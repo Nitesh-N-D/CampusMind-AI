@@ -128,7 +128,9 @@ expose that.
 ## Privacy (personalization data)
 
 - Students opt into department/year/semester/section/interests - none of
-  it is required to use the assistant.
+  it is required to use the assistant. Admin accounts have none of these
+  fields: the profile page doesn't show them, and `PUT /api/profile/me`
+  rejects them for admins with `400`.
 - `PUT /api/profile/me` lets a student update it at any time.
 - `DELETE /api/profile/me` clears the personalization fields without
   deleting the account or chat history (`app/api/profile.py`).

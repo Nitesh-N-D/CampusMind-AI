@@ -71,3 +71,9 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# Claude Code local runtime markers
+.claude/.headroom_wrap_*.json
+
+# Serena local/editor configuration
+.serena/

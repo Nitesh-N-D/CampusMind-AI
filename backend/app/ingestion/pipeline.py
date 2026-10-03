@@ -7,8 +7,18 @@ from app.ingestion.chunker import chunk_pages
 from app.ingestion.extractors import ExtractionError, extract_document, file_type_for
 from app.core.logging_config import logger
 from app.services.ai_provider import AIProviderError
+from app.services.event_detector import detect_events
 from app.services.embedding_provider import get_embedding_provider
 from app.services.trust_engine import score_document
+
+
+def _detect_events(document: models.Document, pages) -> None:
+    """Suggest deadlines/holidays for the admin to review. A failure here must
+    never fail the upload - these are optional hints."""
+    try:
+        document.detected_events = detect_events(p.text for p in pages)
+    except Exception:  # noqa: BLE001
+        logger.exception("Event detection failed for document_id=%s", document.id)
 
 
 async def process_document(db: Session, document: models.Document) -> None:
@@ -22,6 +32,7 @@ async def process_document(db: Session, document: models.Document) -> None:
         pages = extract_document(document.file_path, file_type)
         # For non-paginated formats this counts sections/sheets instead.
         document.page_count = len(pages)
+        _detect_events(document, pages)
 
         raw_chunks = chunk_pages(pages)
         embedder = get_embedding_provider()

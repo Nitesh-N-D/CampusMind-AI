@@ -12,7 +12,8 @@ are identical no matter what was uploaded:
   .xlsx / .csv   one segment per sheet; every row becomes a self-contained
                  "Header: value; Header: value." line
   .txt           one segment per heading-delimited section
-  .jpg / .png    OCR'd into a single segment
+  .jpg / .png / .webp
+                 OCR'd into a single segment
 
 Any failure raises `ExtractionError` with a message that is safe to show an
 admin as-is.
@@ -36,6 +37,7 @@ FILE_TYPES = {
     ".jpg": "image",
     ".jpeg": "image",
     ".png": "image",
+    ".webp": "image",
 }
 
 # Legacy binary Office formats need a different parser entirely - say so
@@ -89,7 +91,7 @@ def unsupported_type_message(filename: str) -> str:
     shown = ext or "files without an extension"
     return (
         f"Unsupported file type ({shown}). Upload a PDF, Word (.docx), Excel (.xlsx), "
-        "PowerPoint (.pptx), CSV, plain text (.txt), or image (.jpg, .jpeg, .png) file."
+        "PowerPoint (.pptx), CSV, plain text (.txt), or image (.jpg, .jpeg, .png, .webp) file."
     )
 
 
@@ -101,7 +103,11 @@ def content_matches_type(file_type: str, head: bytes) -> bool:
     if file_type in ("word", "excel", "presentation"):
         return head[:4] == b"PK\x03\x04"
     if file_type == "image":
-        return head[:8] == b"\x89PNG\r\n\x1a\n" or head[:3] == b"\xff\xd8\xff"
+        return (
+            head[:8] == b"\x89PNG\r\n\x1a\n"
+            or head[:3] == b"\xff\xd8\xff"
+            or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
+        )
     if file_type in ("text", "csv"):
         return b"\x00" not in head[:4096] or head[:2] in (b"\xff\xfe", b"\xfe\xff")
     return False
@@ -399,7 +405,7 @@ def extract_image(file_path: str) -> List[PageContent]:
     except ExtractionError:
         raise
     except (UnidentifiedImageError, OSError, SyntaxError) as exc:
-        raise ExtractionError("This image appears to be damaged or isn't a valid JPG, JPEG, or PNG file.") from exc
+        raise ExtractionError("This image appears to be damaged or isn't a valid JPG, JPEG, PNG, or WEBP file.") from exc
     return [PageContent(page_number=None, text=text, likely_scanned=True, heading=None)] if text else []
 
 

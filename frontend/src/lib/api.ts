@@ -97,6 +97,14 @@ async function put<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+async function patch<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(API_BASE + path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
 async function del<T>(path: string): Promise<T> {
   return request<T>(API_BASE + path, { method: "DELETE" });
 }
@@ -123,6 +131,34 @@ async function download(path: string, params: [string, string][], fallbackName: 
   a.click();
   a.remove();
   URL.revokeObjectURL(href);
+}
+
+// Fetches an authenticated file and either saves it or opens it in a new tab.
+async function openFile(path: string, filename: string, save: boolean): Promise<void> {
+  const url = new URL(API_BASE + path);
+  if (!save) url.searchParams.set("inline", "true");
+  const auth = authHeaders();
+  // Open the tab synchronously so the popup blocker treats it as a click.
+  const tab = save ? null : window.open("", "_blank");
+  try {
+    const res = await send(url.toString(), { headers: auth });
+    if (!res.ok) await handle<never>(res, "Authorization" in auth);
+    const href = URL.createObjectURL(await res.blob());
+    if (tab) {
+      tab.location.href = href;
+    } else {
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(href), 60_000);
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
 }
 
 // ---- Types mirrored from backend/app/schemas/schemas.py ----
@@ -156,7 +192,124 @@ export interface DocumentOut {
   page_count: number;
   file_type: "pdf" | "word" | "excel" | "presentation" | "csv" | "text" | "image" | "unknown";
   processing_error?: string | null;
+  detected_events?: DetectedEvent[];
   created_at: string;
+}
+
+// Suggestions found in an uploaded document. Nothing is published until an
+// admin chooses "Publish Reminder".
+export interface DetectedEvent {
+  kind: "deadline" | "holiday" | "examination" | "event" | "date";
+  date: string; // YYYY-MM-DD
+  text: string;
+}
+
+export type NotificationCategory =
+  | "circular"
+  | "announcement"
+  | "holiday"
+  | "deadline"
+  | "examination"
+  | "assignment"
+  | "event"
+  | "academic"
+  | "general";
+export type NotificationPriority = "normal" | "important" | "urgent";
+export type NotificationAudience = "student" | "faculty" | "both";
+
+export interface Attachment {
+  document_id: number;
+  filename: string;
+  mime_type: string | null;
+  file_type: string;
+  is_image: boolean;
+}
+
+export interface NotificationOut {
+  id: number;
+  title: string;
+  body: string;
+  category: NotificationCategory;
+  priority: NotificationPriority;
+  audience: NotificationAudience;
+  circular_number: string | null;
+  department: string | null;
+  event_date: string | null;
+  deadline: string | null;
+  effective_date: string | null;
+  expires_at: string | null;
+  published_at: string;
+  activity_at: string;
+  status: string;
+  state: "draft" | "scheduled" | "published" | "expired" | "archived";
+  is_read: boolean | null;
+  attachment: Attachment | null;
+  verified: boolean | null;
+  reminder_offsets: number[] | null;
+  scheduled_reminders: number | null;
+}
+
+export interface PushStatus {
+  configured: boolean;
+  public_key: string | null;
+  subscribed: boolean;
+  devices: number;
+}
+
+export interface UnreadSummary {
+  unread: number;
+  latest: NotificationOut[];
+}
+
+export interface ReminderBuckets {
+  today: NotificationOut[];
+  this_week: NotificationOut[];
+  upcoming: NotificationOut[];
+  past: NotificationOut[];
+}
+
+export interface AdminNotificationSummary {
+  total: number;
+  active_circulars: number;
+  scheduled_reminders: number;
+  upcoming_deadlines: NotificationOut[];
+  upcoming_holidays: NotificationOut[];
+  recent: NotificationOut[];
+}
+
+export interface ReminderCreate {
+  title: string;
+  body: string;
+  category?: NotificationCategory;
+  priority?: NotificationPriority;
+  audience: NotificationAudience;
+  event_date?: string | null;
+  deadline?: string | null;
+  document_id?: number | null;
+  reminder_offsets?: number[];
+}
+
+export type NotificationUpdate = Partial<
+  Pick<
+    NotificationOut,
+    | "title"
+    | "body"
+    | "category"
+    | "priority"
+    | "audience"
+    | "circular_number"
+    | "department"
+    | "event_date"
+    | "deadline"
+    | "effective_date"
+    | "expires_at"
+  >
+> & { reminder_offsets?: number[]; reminder_date?: string | null };
+
+// The server stores naive UTC and serialises it without a zone suffix;
+// `new Date("2026-10-12T09:00:00")` would read that as local time.
+export function parseUtc(value: string): Date {
+  return new Date(/(Z|[+-]\d\d:?\d\d)$/.test(value) ? value : `${value}Z`);
 }
 
 export interface Citation {
@@ -303,6 +456,39 @@ export const api = {
     upload: (form: FormData) => postForm<DocumentOut>("/api/documents/upload", form),
     remove: (id: number) => del<{ status: string }>(`/api/documents/${id}`),
     verify: (id: number) => post<DocumentOut>(`/api/documents/${id}/verify`),
+    // Attachments are only reachable with the user's token, so they are
+    // fetched as a blob rather than linked by URL.
+    openFile: (id: number, filename: string) => openFile(`/api/documents/${id}/file`, filename, false),
+    downloadFile: (id: number, filename: string) => openFile(`/api/documents/${id}/file`, filename, true),
+  },
+  push: {
+    status: () => get<PushStatus>("/api/push/status"),
+    subscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+      post<PushStatus>("/api/push/subscribe", sub),
+    unsubscribe: (endpoint: string) =>
+      request<PushStatus>(API_BASE + "/api/push/subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      }),
+  },
+  notifications: {
+    list: (params?: { category?: string; audience?: string; status?: string }) =>
+      get<NotificationOut[]>("/api/notifications", params),
+    unread: () => get<UnreadSummary>("/api/notifications/unread-count"),
+    get: (id: number) => get<NotificationOut>(`/api/notifications/${id}`),
+    markRead: (id: number) => post<{ status: string }>(`/api/notifications/${id}/read`),
+    markAllRead: () => post<{ marked: number }>("/api/notifications/read-all"),
+    // Admin only.
+    summary: () => get<AdminNotificationSummary>("/api/notifications/summary"),
+    publish: (form: FormData) => postForm<NotificationOut>("/api/notifications", form),
+    update: (id: number, data: NotificationUpdate) => patch<NotificationOut>(`/api/notifications/${id}`, data),
+    archive: (id: number) => del<{ status: string }>(`/api/notifications/${id}`),
+  },
+  reminders: {
+    list: () => get<ReminderBuckets>("/api/reminders"),
+    // Admin only. Used by "Publish Reminder" on detected events.
+    create: (data: ReminderCreate) => post<NotificationOut>("/api/reminders", data),
   },
   chat: {
     send: (data: { message: string; session_id: number | null; language: string }) =>

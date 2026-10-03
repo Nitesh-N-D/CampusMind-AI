@@ -4,6 +4,7 @@ import { useAuthStore } from "@/lib/authStore";
 import { useThemeStore } from "@/lib/themeStore";
 import { RequireAuth, RedirectIfAuthed } from "@/components/RouteGuards";
 import { ToastContainer } from "@/components/ToastContainer";
+import { NotificationPoller } from "@/components/NotificationPoller";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -16,6 +17,9 @@ import AdminConflicts from "@/pages/AdminConflicts";
 import AdminDocuments from "@/pages/AdminDocuments";
 import AdminLogins from "@/pages/AdminLogins";
 import AdminSettings from "@/pages/AdminSettings";
+import AdminNotifications from "@/pages/AdminNotifications";
+import Notifications from "@/pages/Notifications";
+import Reminders from "@/pages/Reminders";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import NotFound from "@/pages/NotFound";
@@ -32,6 +36,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastContainer />
+      <NotificationPoller />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route
@@ -72,6 +77,30 @@ export default function App() {
           element={
             <RequireAuth>
               <Profile />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <RequireAuth role={["student", "faculty"]}>
+              <Notifications />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/reminders"
+          element={
+            <RequireAuth role={["student", "faculty"]}>
+              <Reminders />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/notifications"
+          element={
+            <RequireAuth role="admin">
+              <AdminNotifications />
             </RequireAuth>
           }
         />

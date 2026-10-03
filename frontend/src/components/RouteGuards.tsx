@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/authStore";
 
-export function RequireAuth({ children, role }: { children: ReactNode; role?: "admin" | "student" | "faculty" }) {
+type Role = "admin" | "student" | "faculty";
+
+export function RequireAuth({ children, role }: { children: ReactNode; role?: Role | Role[] }) {
   const { isAuthenticated, role: userRole } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role && userRole !== role) {
+  if (role && !(Array.isArray(role) ? role : [role]).includes(userRole as Role)) {
     return <Navigate to={userRole === "admin" ? "/admin" : "/chat"} replace />;
   }
   return <>{children}</>;

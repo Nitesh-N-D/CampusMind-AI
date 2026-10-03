@@ -220,7 +220,6 @@ def test_removed_features_have_no_endpoints(client, college_and_admin, student_t
     for token in (student_token, admin_token):
         headers = {"Authorization": f"Bearer {token}"}
         for path in (
-            "/api/notifications",
             "/api/search?q=attendance",
             "/api/timeline",
             "/api/documents/changes",

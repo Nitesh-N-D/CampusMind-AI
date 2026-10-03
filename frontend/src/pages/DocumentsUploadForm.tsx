@@ -13,6 +13,13 @@ const DOC_TYPES = [
   { value: "faculty_info", label: "Faculty information" },
   { value: "event_notice", label: "Event notice" },
   { value: "general_notice", label: "General notice" },
+  { value: "announcement", label: "Announcement" },
+  { value: "holiday", label: "Holiday" },
+  { value: "deadline", label: "Deadline" },
+  { value: "academic_calendar", label: "Academic calendar" },
+  { value: "examination", label: "Examination" },
+  { value: "assignment", label: "Assignment" },
+  { value: "event", label: "Event" },
 ];
 
 // Mirrors the backend's supported extensions (app/ingestion/extractors.py).
@@ -26,6 +33,7 @@ const FILE_KINDS: Record<string, string> = {
   jpg: "Image",
   jpeg: "Image",
   png: "Image",
+  webp: "Image",
 };
 const ACCEPT = Object.keys(FILE_KINDS)
   .map((ext) => `.${ext}`)
@@ -97,7 +105,7 @@ export function UploadForm({
     });
     setError(
       rejected.length
-        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), and images (.jpg, .jpeg, .png), up to ${MAX_UPLOAD_MB}MB each.`
+        ? `Skipped ${rejected.join(", ")}. Supported: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), and images (.jpg, .jpeg, .png, .webp), up to ${MAX_UPLOAD_MB}MB each.`
         : null
     );
     if (accepted.length === 0) return;
@@ -207,7 +215,7 @@ export function UploadForm({
         </svg>
         <p className="text-sm font-medium text-ink-800">Drag files here, or click to browse</p>
         <p className="text-xs text-ink-400 max-w-md">
-          PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .jpeg, .png), up to {MAX_UPLOAD_MB}MB each.
+          PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .jpeg, .png, .webp), up to {MAX_UPLOAD_MB}MB each.
           Images and scanned PDFs are read with text recognition.
         </p>
         <input

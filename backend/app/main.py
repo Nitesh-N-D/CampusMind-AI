@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import admin, auth, chat, documents, profile
+from app.api import admin, auth, chat, documents, notifications, profile, push, reminders
 from app.core.config import settings
 from app.core.logging_config import configure_logging, logger
 from app.core.security import get_current_user
@@ -29,7 +29,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -168,6 +168,9 @@ app.include_router(documents.router)
 app.include_router(chat.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
+app.include_router(notifications.router)
+app.include_router(reminders.router)
+app.include_router(push.router)
 
 
 # Signed-in only and deliberately minimal: no provider, environment, or

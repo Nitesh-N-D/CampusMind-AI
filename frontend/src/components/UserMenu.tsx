@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/authStore";
 import { useThemeStore } from "@/lib/themeStore";
 import { api } from "@/lib/api";
+import { detachThisDevice } from "@/lib/pushClient";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Workspace admin",
@@ -146,7 +147,10 @@ export function UserMenu() {
           <div className="border-t border-line my-1.5" />
           <button
             role="menuitem"
-            onClick={() => {
+            onClick={async () => {
+              // Stop background pushes to this browser while the token is
+              // still valid, but never make sign-out wait long for it.
+              await Promise.race([detachThisDevice(), new Promise((resolve) => setTimeout(resolve, 1500))]);
               logout();
               navigate("/login");
             }}

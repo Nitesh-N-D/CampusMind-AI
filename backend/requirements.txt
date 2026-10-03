@@ -25,3 +25,5 @@ email-validator>=2.0
 cloudinary==1.45.0
 Pillow==12.1.1
 psycopg[binary]==3.2.3
+# Web Push (VAPID) delivery to browsers
+pywebpush==2.5.0

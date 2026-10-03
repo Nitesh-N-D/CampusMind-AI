@@ -24,6 +24,13 @@ TYPE_AUTHORITY = {
     "faculty_info": 16,
     "event_notice": 12,
     "general_notice": 10,
+    "academic_calendar": 24,
+    "examination": 24,
+    "holiday": 18,
+    "deadline": 18,
+    "announcement": 14,
+    "assignment": 12,
+    "event": 12,
 }
 
 

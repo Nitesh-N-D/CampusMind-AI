@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Wordmark } from "@/components/Brand";
 import { UserMenu } from "@/components/UserMenu";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuthStore } from "@/lib/authStore";
 
 interface NavItem {
@@ -47,6 +48,15 @@ const Icon = {
       <path d="M4 12h10M11 8.5 14.5 12 11 15.5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
+  bell: (
+    <path d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15L6 17Z M10 21h4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  calendar: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2" strokeWidth="1.6" />
+      <path d="M4 10h16M9 3v4M15 3v4" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" strokeWidth="1.6" />
@@ -80,6 +90,7 @@ const adminNav: NavSection[] = [
     items: [
       { to: "/admin", label: "Knowledge health", icon: <NavIcon path={Icon.health} /> },
       { to: "/admin/documents", label: "Documents", icon: <NavIcon path={Icon.docs} /> },
+      { to: "/admin/notifications", label: "Notifications", icon: <NavIcon path={Icon.bell} /> },
       { to: "/admin/conflicts", label: "Conflicts", icon: <NavIcon path={Icon.conflict} /> },
       { to: "/admin/logins", label: "Login activity", icon: <NavIcon path={Icon.logins} /> },
       { to: "/admin/settings", label: "Settings", icon: <NavIcon path={Icon.settings} /> },
@@ -95,6 +106,7 @@ const adminNav: NavSection[] = [
 // get two small header links instead of a sidebar - chat gets the screen.
 const endUserNav: NavItem[] = [
   { to: "/chat", label: "Assistant", icon: <NavIcon path={Icon.chat} /> },
+  { to: "/reminders", label: "Reminders", icon: <NavIcon path={Icon.calendar} /> },
   { to: "/profile", label: "Profile", icon: <NavIcon path={Icon.profile} /> },
 ];
 
@@ -231,7 +243,8 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
               </nav>
             </>
           )}
-          <div className={isAdmin ? "ml-auto" : "border-l border-line pl-2 sm:pl-3"}>
+          <div className={isAdmin ? "ml-auto" : "flex items-center gap-1 border-l border-line pl-2 sm:pl-3"}>
+            {!isAdmin && <NotificationBell />}
             <UserMenu />
           </div>
         </header>

@@ -160,6 +160,8 @@ class DocumentOut(BaseModel):
     file_type: str
     processing_error: Optional[str] = None
     created_at: datetime
+    # Suggestions for the admin to review; see services/event_detector.py.
+    detected_events: List[dict] = []
 
     model_config = ConfigDict(from_attributes=True)
 

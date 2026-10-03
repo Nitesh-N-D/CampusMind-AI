@@ -12,6 +12,7 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -128,6 +129,19 @@ class Document(Base):
 
     page_count = Column(Integer, default=0)
     processing_error = Column(Text, nullable=True)
+
+    # Persistent storage metadata. All nullable: documents uploaded before
+    # these existed only have file_path. storage_url is internal metadata and
+    # is never returned to clients; files are served through an
+    # authenticated endpoint.
+    storage_provider = Column(String(20), nullable=True)  # cloudinary | local
+    storage_key = Column(String(500), nullable=True)
+    storage_url = Column(String(1000), nullable=True)
+    mime_type = Column(String(120), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    # Dates/deadlines/holidays spotted in the text. Suggestions only - nothing
+    # is published until an admin approves it.
+    detected_events = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -249,3 +263,119 @@ class LoginEvent(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     user = relationship("User")
+
+
+class NotificationCategory(str, enum.Enum):
+    CIRCULAR = "circular"
+    ANNOUNCEMENT = "announcement"
+    HOLIDAY = "holiday"
+    DEADLINE = "deadline"
+    ACADEMIC = "academic"
+    EXAMINATION = "examination"
+    ASSIGNMENT = "assignment"
+    EVENT = "event"
+    GENERAL = "general"
+
+
+class NotificationPriority(str, enum.Enum):
+    NORMAL = "normal"
+    IMPORTANT = "important"
+    URGENT = "urgent"
+
+
+class NotificationAudience(str, enum.Enum):
+    STUDENT = "student"
+    FACULTY = "faculty"
+    BOTH = "both"
+
+
+class Notification(Base):
+    """An official, admin-published communication (circular, holiday,
+    deadline...). Read state is per user in NotificationRead, never here."""
+
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True)
+    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    body = Column(Text, nullable=False)
+    # Stored as plain strings validated against the enums above, so adding a
+    # category later never needs a Postgres enum migration.
+    category = Column(String(30), nullable=False, default="general")
+    priority = Column(String(20), nullable=False, default="normal")
+    audience = Column(String(20), nullable=False)
+    published_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
+
+    circular_number = Column(String(80), nullable=True)
+    department = Column(String(120), nullable=True)
+    event_date = Column(DateTime, nullable=True)
+    deadline = Column(DateTime, nullable=True)
+    effective_date = Column(DateTime, nullable=True)
+
+    # published_at in the future means "scheduled": hidden until it arrives.
+    published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    # Set when a scheduled reminder fires, so the item resurfaces as unread.
+    last_reminded_at = Column(DateTime, nullable=True)
+    # Set (atomically) the moment the initial Web Push for this notification is
+    # claimed, so it is pushed at most once however many times anything runs.
+    push_sent_at = Column(DateTime, nullable=True)
+
+    status = Column(String(20), nullable=False, default="published")  # draft | published | archived
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    document = relationship("Document")
+    reminders = relationship("ScheduledReminder", back_populates="notification", cascade="all, delete-orphan")
+
+
+class NotificationRead(Base):
+    """One row per (notification, user) who has read it."""
+
+    __tablename__ = "notification_reads"
+    __table_args__ = (UniqueConstraint("notification_id", "user_id", name="uq_notification_reads_user"),)
+
+    id = Column(Integer, primary_key=True)
+    notification_id = Column(Integer, ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    read_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ScheduledReminder(Base):
+    __tablename__ = "scheduled_reminders"
+    # The same notification can never have two reminders for the same moment.
+    __table_args__ = (UniqueConstraint("notification_id", "scheduled_for", name="uq_scheduled_reminder_time"),)
+
+    id = Column(Integer, primary_key=True)
+    notification_id = Column(Integer, ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False, index=True)
+    scheduled_for = Column(DateTime, nullable=False, index=True)
+    reminder_type = Column(String(30), nullable=False)  # the notification's category
+    offset_days = Column(Integer, nullable=True)  # null for a custom reminder date
+    status = Column(String(20), nullable=False, default="pending")  # pending | sent | cancelled
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    notification = relationship("Notification", back_populates="reminders")
+
+
+class PushSubscription(Base):
+    """One browser/device a user has opted in to background notifications on.
+    A user can have several. The endpoint is the push service's per-browser
+    URL and acts as a bearer secret, so it is never returned by any API."""
+
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False, index=True)
+    endpoint = Column(String(1000), nullable=False, unique=True)
+    p256dh = Column(String(255), nullable=False)
+    auth = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    failure_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_success_at = Column(DateTime, nullable=True)
+    last_failure_at = Column(DateTime, nullable=True)

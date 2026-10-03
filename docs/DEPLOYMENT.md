@@ -56,12 +56,20 @@ their rows. Back up first if you want to keep that data.
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
    - **Instance Type**: Free
 4. Under **Environment**, add these variables (values from your own
-   accounts):
+   accounts). **`SECRET_KEY` is mandatory on Render.** With
+   `ENVIRONMENT=production` the backend refuses to start (the deploy fails
+   with a `SECRET_KEY is missing or still a development placeholder` error in
+   the logs) if `SECRET_KEY` is unset, is a placeholder such as the one in
+   `.env.example`, or is shorter than 32 characters. Without this check anyone
+   could forge login tokens, because the built-in development key is public.
+   The error never prints the key. Changing `SECRET_KEY` later signs everyone
+   out.
 
    | Key | Value |
    |---|---|
    | `DATABASE_URL` | the `postgresql+psycopg://...` string from Step 2 |
-   | `SECRET_KEY` | run `python3 -c "import secrets; print(secrets.token_urlsafe(48))"` locally and paste the result |
+   | `ENVIRONMENT` | `production` (turns on the startup safety checks below; see also the storage note under "Notifications, reminders and attachments") |
+   | `SECRET_KEY` | **required.** Run `python3 -c "import secrets; print(secrets.token_urlsafe(48))"` locally and paste the result (at least 32 characters) |
    | `AI_PROVIDER` | `gemini` |
    | `GEMINI_API_KEY` | your key from <https://aistudio.google.com/apikey> |
    | `EMBEDDING_PROVIDER` | `gemini` |
@@ -163,6 +171,98 @@ Point your domain's DNS as each dashboard instructs, then repeat Step 5
 with the new frontend domain and Step 7 with both new domains.
 
 ---
+
+## Notifications, reminders and attachments
+
+**Cloudinary is required for document and notification attachments in
+production.** Render's disk is ephemeral, so with `ENVIRONMENT=production`
+and no `CLOUDINARY_*` values, uploads return a clear 503 instead of silently
+losing files. Attachments are stored as authenticated assets and served only
+through `GET /api/documents/{id}/file` after a permission check; storage URLs
+and paths are never sent to the browser. Local-disk storage is a dev/test
+fallback only.
+
+**Scheduled reminders** (7, 3, 1 days before, and the day of) are sent by
+calling one endpoint from an external scheduler every 15-60 minutes - there
+is no always-on worker, which keeps the free tier working:
+
+```
+curl -X POST https://<your-backend>/api/notifications/process-reminders      -H "X-Cron-Secret: $CRON_SECRET"
+```
+
+1. Set `CRON_SECRET` on Render (a long random string).
+2. Create the schedule with Render Cron Jobs, GitHub Actions `schedule:`,
+   or any external cron service (e.g. cron-job.org).
+3. The endpoint is idempotent: each reminder is claimed atomically and fires
+   once, so overlapping or repeated calls are safe.
+
+**Known limitations**
+
+- Reminders are only as punctual as the scheduler interval, and a cold-starting
+  free-tier backend may delay a run.
+- Browser alerts use the foreground Notification API: they appear while
+  CampusMind is open in a tab. Background delivery with the tab closed is the
+  separate Web Push channel below. The in-app bell and Notifications page
+  always work, including when browser permission is denied or unsupported.
+- "Day of" reminders fire 6 hours before the deadline/event time. Day
+  boundaries follow UTC on the server; the app shows times in the viewer's
+  local zone.
+- Date detection in uploaded documents is day-first (`12/10/2026` = 12 Oct)
+  and requires an explicit year. Detected dates are suggestions: nothing is
+  published until an admin clicks "Publish Reminder".
+- **PostgreSQL behaviour has only been tested locally on SQLite.** After
+  deploying, verify on Supabase: startup migration (new `documents` storage
+  columns, `notifications.push_sent_at` and the notification and
+  `push_subscriptions` tables), publishing with an attachment, per-user read
+  state, and one `process-reminders` run.
+
+### Background notifications (Web Push)
+
+An additional channel on top of the in-app bell and 60s polling, which are
+unchanged. Students and faculty click **Enable Background Notifications** on
+the Notifications page (never prompted automatically); a service worker
+(`frontend/public/sw.js`) then shows notifications with the tab closed.
+
+1. **Generate keys** (once, locally): `python backend/scripts/generate_vapid_keys.py`.
+   It prints to the terminal only. Never commit the output.
+2. **Render environment** (backend only): `VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:you@college.edu` or an
+   `https://` URL). The private key is never a `VITE_*` variable and never
+   reaches the browser; the frontend fetches the public key from
+   `GET /api/push/status`, so Vercel needs no new variables.
+3. **Rotating keys** invalidates every existing subscription. Users must turn
+   background notifications off and on again (dead subscriptions are
+   deactivated automatically on their next failed delivery).
+4. **HTTPS is required** (Vercel and Render provide it); service workers and
+   push do not work on plain HTTP except `localhost`.
+5. **Service worker scope**: served from `/sw.js` with scope `/`;
+   `frontend/vercel.json` sets `no-cache` on it so updates ship immediately.
+6. **When pushes are sent**: once when a notification goes live (immediately
+   on publish, or at the next `process-reminders` run for scheduled ones and
+   published drafts), and once per fired reminder (7/3/1/0 days). Editing and
+   archiving never push. Existing notifications are marked as already pushed
+   by the migration, so enabling push does not resend old notices.
+7. **Latency**: scheduled items and reminders are pushed by the scheduler, so
+   delay equals the scheduler interval (15-60 minutes).
+8. **Who receives**: active students and faculty of the notification's own
+   college, matching its audience. Administrators publish and are not push
+   targets. Several devices per user are supported; subscribe endpoints are
+   restricted to the browsers' push services (FCM, Mozilla, Windows, Apple).
+9. **Failures**: a failing device never blocks the others or the publish.
+   404/410 responses deactivate the subscription; other failures are counted.
+10. **Shared devices**: signing in as another user on the same browser
+    re-binds that browser's subscription to the new user. Signing out does not
+    unsubscribe; use **Turn off** before handing a device over.
+11. **Troubleshooting**: `GET /api/push/status` shows `configured` and device
+    count; check the Render logs for "push delivery failed"; ensure the
+    browser's site notification permission is Allow and the OS isn't in
+    Do Not Disturb.
+
+**Not verified locally** (needs a real deployment and browser): delivery
+through the real FCM/Mozilla/Apple services, service worker behavior on
+Android/iOS (iOS needs the site added to the Home Screen), OS-level
+notification display, Render Cron timing, real Supabase Postgres and real
+Cloudinary uploads. Automated tests mock the push network call.
 
 ## Ongoing costs at scale
 

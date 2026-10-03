@@ -1,30 +1,19 @@
-import os
-import uuid
-from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.core.security import require_role
+from app.core.security import get_current_user, require_role
 from app.db import models
 from app.db.database import get_db
-from app.ingestion.extractors import content_matches_type, file_type_for, unsupported_type_message
-from app.ingestion.pipeline import process_document
+from app.ingestion.extractors import file_type_for
 from app.schemas.schemas import DocumentOut
+from app.services import storage_service
+from app.services.document_upload import create_document, parse_dt
+from app.services.notification_service import visible_query
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
-
-FILE_TYPE_LABELS = {
-    "pdf": "PDF",
-    "word": "Word document",
-    "excel": "Excel spreadsheet",
-    "presentation": "PowerPoint presentation",
-    "csv": "CSV spreadsheet",
-    "text": "text file",
-    "image": "image",
-}
 
 
 @router.post("/upload", response_model=DocumentOut)
@@ -44,74 +33,22 @@ async def upload_document(
     db: Session = Depends(get_db),
     admin: models.User = Depends(require_role("admin")),
 ):
-    filename = file.filename or ""
-    file_type = file_type_for(filename)
-    if file_type is None:
-        raise HTTPException(status_code=400, detail=unsupported_type_message(filename))
-    ext = os.path.splitext(filename)[1].lower()
-
-    contents = await file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="This file is empty.")
-    if len(contents) > settings.max_upload_mb * 1024 * 1024:
-        raise HTTPException(status_code=400, detail=f"File exceeds {settings.max_upload_mb}MB limit.")
-    if not content_matches_type(file_type, contents[:8192]):
-        raise HTTPException(
-            status_code=400,
-            detail=f"This file's contents don't look like a {FILE_TYPE_LABELS[file_type]}. "
-            "It may be damaged or renamed from another format.",
-        )
-
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    stored_name = f"{uuid.uuid4().hex}{ext}"
-    stored_path = os.path.join(settings.upload_dir, stored_name)
-    with open(stored_path, "wb") as f:
-        f.write(contents)
-
-    def parse_dt(v: Optional[str]) -> Optional[datetime]:
-        if not v:
-            return None
-        try:
-            return datetime.fromisoformat(v)
-        except ValueError:
-            return None
-
-    document = models.Document(
-        college_id=admin.college_id,
-        uploaded_by=admin.id,
+    document = await create_document(
+        db,
+        admin,
+        file,
         title=title,
         document_type=document_type,
         department=department,
         academic_year=academic_year,
         semester=semester,
-        file_path=stored_path,
-        original_filename=filename,
         published_date=parse_dt(published_date),
         effective_date=parse_dt(effective_date),
         expiry_date=parse_dt(expiry_date),
         is_official=is_official,
         is_verified=is_verified,
         supersedes_id=supersedes_id,
-        status=models.DocumentStatus.UPLOADED,
     )
-    if supersedes_id:
-        old = (
-            db.query(models.Document)
-            .filter(models.Document.id == supersedes_id, models.Document.college_id == admin.college_id)
-            .first()
-        )
-        if not old:
-            os.remove(stored_path)
-            raise HTTPException(status_code=400, detail="The document this replaces wasn't found in your workspace.")
-        document.version = old.version + 1
-
-    db.add(document)
-    db.commit()
-    db.refresh(document)
-
-    await process_document(db, document)
-    db.refresh(document)
-
     return _to_out(document)
 
 
@@ -137,6 +74,7 @@ def _to_out(doc: models.Document) -> DocumentOut:
         file_type=file_type_for(doc.original_filename or doc.file_path) or "unknown",
         processing_error=doc.processing_error,
         created_at=doc.created_at,
+        detected_events=doc.detected_events or [],
     )
 
 
@@ -169,9 +107,60 @@ def delete_document(
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    # A published circular keeps its record: it just loses the attachment link.
+    db.query(models.Notification).filter(models.Notification.document_id == doc.id).update(
+        {"document_id": None}, synchronize_session=False
+    )
+    provider, key = doc.storage_provider, doc.storage_key
     db.delete(doc)
     db.commit()
+    storage_service.delete_stored(provider, key)
     return {"status": "deleted"}
+
+
+@router.get("/{document_id}/file")
+def download_document_file(
+    document_id: int,
+    inline: bool = False,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Serves the original file. Admins can open any document in their
+    college; students and faculty only a document attached to a notification
+    they are allowed to see. Anything else is a 404, so existence isn't leaked."""
+    doc = db.query(models.Document).filter(
+        models.Document.id == document_id, models.Document.college_id == user.college_id
+    ).first()
+    allowed = doc is not None
+    if allowed and user.role != models.UserRole.ADMIN:
+        allowed = (
+            visible_query(db, user).filter(models.Notification.document_id == document_id).first() is not None
+        )
+    if not allowed:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        data = storage_service.fetch_bytes(doc.storage_provider, doc.storage_key, doc.file_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="The original file is no longer available.")
+    except storage_service.StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    ext = "." + doc.original_filename.rsplit(".", 1)[-1] if "." in (doc.original_filename or "") else ""
+    mime = doc.mime_type or storage_service.mime_for(ext)
+    name = storage_service.safe_display_name(doc.original_filename)
+    # Only PDFs and images are shown in the browser; everything else downloads.
+    viewable = mime == "application/pdf" or mime.startswith("image/")
+    disposition = "inline" if inline and viewable else "attachment"
+    return Response(
+        content=data,
+        media_type=mime,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{name}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.post("/{document_id}/verify")

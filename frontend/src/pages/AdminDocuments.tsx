@@ -5,6 +5,7 @@ import { Seal } from "@/components/Seal";
 import { api, ApiError, type DocumentOut } from "@/lib/api";
 import { toastError, toastSuccess } from "@/lib/toastStore";
 import { UploadForm } from "@/pages/DocumentsUploadForm";
+import { DetectedEvents } from "@/components/DetectedEvents";
 
 const FILE_TYPE_LABEL: Record<DocumentOut["file_type"], string> = {
   pdf: "PDF",
@@ -133,6 +134,7 @@ export default function AdminDocuments() {
                 {doc.processing_error && (
                   <p className="text-xs text-seal-coral-700 mt-1">{doc.processing_error}</p>
                 )}
+                <DetectedEvents doc={doc} />
               </div>
               <div className="flex sm:flex-col gap-2 shrink-0">
                 {!doc.is_verified && (

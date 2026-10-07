@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     LoginEventPage,
     WorkspaceSettingsOut,
 )
+from app.api.admin_insights import feedback_totals
 from app.services.user_export import AccountRow, account_status, build_csv, build_xlsx
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -182,10 +183,49 @@ def analytics(db: Session = Depends(get_db), admin: models.User = Depends(requir
         .all()
     )
 
+    # One grouped query per table, no per-row lookups.
+    answered_questions = db.query(models.SearchLog).filter(
+        models.SearchLog.college_id == cid, models.SearchLog.was_answered.is_(True)
+    ).count()
+    active_users = (
+        db.query(func.count(func.distinct(models.SearchLog.user_id)))
+        .filter(models.SearchLog.college_id == cid, models.SearchLog.created_at >= since)
+        .scalar()
+        or 0
+    )
+    doc_counts = dict(
+        db.query(models.Document.status, func.count(models.Document.id))
+        .filter(models.Document.college_id == cid)
+        .group_by(models.Document.status)
+        .all()
+    )
+    published_notifications = db.query(models.Notification).filter(
+        models.Notification.college_id == cid,
+        models.Notification.status == "published",
+        models.Notification.published_at <= datetime.utcnow(),
+    ).count()
+    pending_reminders = (
+        db.query(models.ScheduledReminder)
+        .join(models.Notification, models.ScheduledReminder.notification_id == models.Notification.id)
+        .filter(models.Notification.college_id == cid, models.ScheduledReminder.status == "pending")
+        .count()
+    )
+    up, down = feedback_totals(db, cid)
+
     return {
         "total_questions_answered": total_questions,
+        "answered_questions": answered_questions,
         "unanswered_questions": unanswered,
         "low_confidence_responses": low_confidence,
+        "active_users_30d": active_users,
+        "documents_total": sum(doc_counts.values()),
+        "documents_ready": doc_counts.get(models.DocumentStatus.READY, 0),
+        "notifications_published": published_notifications,
+        "reminders_pending": pending_reminders,
+        "feedback_helpful": up,
+        "feedback_not_helpful": down,
+        # None until anyone has rated an answer, so the UI shows a dash, not 0%.
+        "feedback_helpful_ratio": round(up / (up + down), 3) if (up + down) else None,
         "top_queries": [{"query": q, "count": c} for q, c in top_queries],
         "recent_uploads": [
             {"id": d.id, "title": d.title, "status": d.status.value, "created_at": d.created_at}

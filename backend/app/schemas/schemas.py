@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import re
 
@@ -171,7 +171,7 @@ class DocumentOut(BaseModel):
 class ChatRequest(BaseModel):
     session_id: Optional[int] = None
     message: str
-    language: Optional[str] = "en"
+    language: Optional[str] = Field(default="en", max_length=10)
 
 
 class CitationOut(BaseModel):
@@ -197,9 +197,13 @@ class ChatResponse(BaseModel):
     abstained: bool
 
 
+FEEDBACK_REASONS = ("incorrect", "missing", "poor_citation", "outdated", "other")
+
+
 class FeedbackRequest(BaseModel):
-    feedback: str  # "up" | "down"
-    note: Optional[str] = None
+    feedback: Literal["up", "down"]
+    reason: Optional[Literal["incorrect", "missing", "poor_citation", "outdated", "other"]] = None
+    note: Optional[str] = Field(default=None, max_length=1000)
 
 
 # ---------- Search ----------

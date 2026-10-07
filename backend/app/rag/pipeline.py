@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 
 from app.db import models
 from app.rag.text import content_terms
-from app.services.ai_provider import AIProvider
+from app.core.logging_config import logger
+from app.services.ai_provider import AIProvider, MockProvider
 from app.services.conflict_engine import detect_conflicts
 from app.services.embedding_provider import cosine_similarity, get_embedding_provider
 from app.services.temporal_engine import temporal_weight
@@ -41,7 +42,8 @@ instead of guessing.
 silently picking one side.
 5. Do not claim something is "official" unless its source is marked official/verified in the context.
 6. Keep the answer concise, clear, and written for a college student.
-7. Respond in the requested response language, but keep official document titles as given.
+7. Respond in the requested response language. Keep official document titles, proper names, course codes, department names, numbers and dates exactly as they appear in the sources, and keep the [Source N] markers unchanged - never translate or alter them.
+8. If sources disagree or an older document has been superseded, say which is the latest and mention the disagreement; never merge contradictory values into one answer.
 """
 
 
@@ -65,6 +67,89 @@ class RagResult:
     retrieval_ms: int
     llm_ms: int
     abstained: bool
+    # no_sources | low_confidence when abstained, otherwise None.
+    reason: Optional[str] = None
+
+
+# Languages the assistant can answer in. Adding one = one row in each table.
+LANGUAGE_NAMES = {"en": "English", "ta": "Tamil", "hi": "Hindi"}
+
+NO_SOURCES_MESSAGE = {
+    "en": (
+        "I don't have sufficient verified information in the college knowledge "
+        "base to answer that yet. Try rephrasing, or check back once the relevant "
+        "document has been uploaded."
+    ),
+    "ta": (
+        "கல்லூரி ஆவணங்களில் இதைப் பற்றிய நம்பகமான தகவல் எனக்குக் கிடைக்கவில்லை. "
+        "வேறு விதமாகக் கேட்டுப் பாருங்கள், அல்லது தொடர்புடைய ஆவணம் பதிவேற்றப்பட்ட பின் மீண்டும் முயலுங்கள்."
+    ),
+    "hi": (
+        "मुझे कॉलेज के दस्तावेज़ों में इस बारे में भरोसेमंद जानकारी नहीं मिली। "
+        "कृपया प्रश्न दूसरे तरीके से पूछें, या संबंधित दस्तावेज़ अपलोड होने के बाद दोबारा कोशिश करें।"
+    ),
+}
+
+LOW_CONFIDENCE_MESSAGE = {
+    "en": (
+        "I found some related material, but it isn't reliable or specific enough for me "
+        "to give you a confident answer. I'd rather say that than guess - please check with "
+        "your department office, or try a more specific question."
+    ),
+    "ta": (
+        "தொடர்புடைய சில தகவல்கள் கிடைத்தன, ஆனால் உறுதியான பதிலைத் தரும் அளவுக்கு அவை நம்பகமானதாகவோ "
+        "துல்லியமாகவோ இல்லை. ஊகிப்பதை விட இதைச் சொல்வதே நல்லது - உங்கள் துறை அலுவலகத்தை அணுகவும், "
+        "அல்லது இன்னும் குறிப்பிட்டுக் கேளுங்கள்."
+    ),
+    "hi": (
+        "कुछ संबंधित सामग्री मिली, लेकिन वह इतनी भरोसेमंद या स्पष्ट नहीं है कि मैं पक्का उत्तर दे सकूँ। "
+        "अनुमान लगाने से बेहतर है कि मैं यह कहूँ - कृपया अपने विभाग कार्यालय से पूछें, या अधिक स्पष्ट प्रश्न करें।"
+    ),
+}
+
+# Below this (but above the abstain line) the answer is still given, with an
+# explicit caveat so a shaky answer never reads as a confident one.
+CAUTION_CONFIDENCE = 40.0
+CAUTION_NOTE = {
+    "en": "Note: my confidence in this answer is low. Please verify it against the cited document before acting on it.",
+    "ta": "குறிப்பு: இந்தப் பதிலில் எனக்கு நம்பிக்கை குறைவாக உள்ளது. செயல்படுவதற்கு முன் மேற்கோள் காட்டிய ஆவணத்தில் சரிபார்க்கவும்.",
+    "hi": "नोट: इस उत्तर पर मेरा भरोसा कम है। कृपया कार्रवाई से पहले उद्धृत दस्तावेज़ में इसकी पुष्टि करें।",
+}
+
+
+def _lang(code: Optional[str]) -> str:
+    return code if code in LANGUAGE_NAMES else "en"
+
+
+def _needs_translation(query: str) -> bool:
+    """True when the question is written in a script the documents are
+    unlikely to be indexed in (Tamil, Devanagari). Keyword and lexical-vector
+    retrieval can't match across scripts, so such questions are normalised to
+    English *for retrieval only* - the student still gets an answer in their
+    chosen language and the original question is passed to the model."""
+    # Devanagari U+0900-097F, Tamil U+0B80-0BFF
+    return any("ऀ" <= ch <= "ॿ" or "஀" <= ch <= "௿" for ch in query)
+
+
+TRANSLATE_PROMPT = (
+    "Translate the user's question into English for a document search. Output ONLY the English "
+    "question. Keep proper names, course codes, department names, document titles, numbers and "
+    "dates exactly as written; do not answer the question or add anything."
+)
+
+
+async def _retrieval_query(ai: AIProvider, query: str) -> str:
+    if not _needs_translation(query) or isinstance(ai, MockProvider):
+        return query
+    try:
+        translated = (await ai.generate(TRANSLATE_PROMPT, query)).strip()
+    except Exception:  # noqa: BLE001 - translation is best-effort; fall back to the raw query
+        logger.warning("Query normalisation failed; retrieving with the original text")
+        return query
+    # Guard against a chatty model: a normalised question is short, one line.
+    if not translated or "\n" in translated or len(translated) > 3 * len(query) + 200:
+        return query
+    return translated
 
 
 def _classify_query(query: str) -> str:
@@ -234,16 +319,14 @@ async def answer_question(
     t0 = time.perf_counter()
     query_type = _classify_query(query)
     department_filter = student.department if student else None
-    results = await retrieve(db, college_id, query, student, department_filter)
+    lang = _lang(response_language)
+    search_query = await _retrieval_query(ai, query)
+    results = await retrieve(db, college_id, search_query, student, department_filter)
     retrieval_ms = int((time.perf_counter() - t0) * 1000)
 
     if not results:
         return RagResult(
-            answer=(
-                "I don't have sufficient verified information in the college knowledge "
-                "base to answer that yet. Try rephrasing, or check back once the relevant "
-                "document has been uploaded."
-            ),
+            answer=NO_SOURCES_MESSAGE[lang],
             citations=[],
             confidence=0.0,
             has_conflict=False,
@@ -251,6 +334,7 @@ async def answer_question(
             retrieval_ms=retrieval_ms,
             llm_ms=0,
             abstained=True,
+            reason="no_sources",
         )
 
     conflicts = detect_conflicts(db, college_id, [r.chunk for r in results])
@@ -261,24 +345,24 @@ async def answer_question(
 
     user_prompt = (
         f"Query type: {query_type}\n"
-        f"Response language: {response_language}\n"
+        f"Response language: {LANGUAGE_NAMES[lang]}\n"
         f"Student context: department={getattr(student, 'department', None)}, "
         f"year={getattr(student, 'year', None)}\n\n"
         f"Retrieved context:\n{context}\n\n"
-        f"Student question: {query}\n\n"
+        f"Student question: {query}\n"
+        + (f"(English search form of the question: {search_query})\n" if search_query != query else "")
+        + "\n"
         "Answer using ONLY the sources above, citing them as [Source N]."
     )
 
     t1 = time.perf_counter()
     abstained = confidence < 25.0
     if abstained:
-        answer = (
-            "I found some related material, but it isn't reliable or specific enough for me "
-            "to give you a confident answer. I'd rather say that than guess - please check with "
-            "your department office, or try a more specific question."
-        )
+        answer = LOW_CONFIDENCE_MESSAGE[lang]
     else:
         answer = await ai.generate(SYSTEM_PROMPT, user_prompt)
+        if confidence < CAUTION_CONFIDENCE:
+            answer = f"{answer}\n\n{CAUTION_NOTE[lang]}"
     llm_ms = int((time.perf_counter() - t1) * 1000)
 
     citations = [
@@ -312,4 +396,5 @@ async def answer_question(
         retrieval_ms=retrieval_ms,
         llm_ms=llm_ms,
         abstained=abstained,
+        reason="low_confidence" if abstained else None,
     )

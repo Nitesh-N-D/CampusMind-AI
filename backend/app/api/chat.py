@@ -83,10 +83,12 @@ async def send_message(
             models.SearchLog(
                 college_id=user.college_id,
                 user_id=user.id,
-                query=payload.message,
+                query=payload.message[:500],  # the column is VARCHAR(500)
                 result_count=len(result.citations),
                 top_confidence=result.confidence,
                 was_answered=not result.abstained,
+                reason=result.reason,
+                language=payload.language or "en",
             )
         )
 
@@ -199,6 +201,8 @@ def submit_feedback(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
     msg.feedback = payload.feedback
+    # Reasons only make sense for a thumbs-down; a later thumbs-up clears them.
+    msg.feedback_reason = payload.reason if payload.feedback == "down" else None
     msg.feedback_note = payload.note
     db.commit()
     return {"status": "recorded"}

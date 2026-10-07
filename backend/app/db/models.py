@@ -229,6 +229,8 @@ class ChatMessage(Base):
     llm_ms = Column(Integer, nullable=True)
     feedback = Column(String(20), nullable=True)  # up | down | null
     feedback_note = Column(Text, nullable=True)
+    # incorrect | missing | poor_citation | outdated | other (validated in the API)
+    feedback_reason = Column(String(30), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("ChatSession", back_populates="messages")
@@ -244,6 +246,14 @@ class SearchLog(Base):
     result_count = Column(Integer, default=0)
     top_confidence = Column(Float, nullable=True)
     was_answered = Column(Boolean, default=True)
+    # no_sources | low_confidence when was_answered is False.
+    reason = Column(String(30), nullable=True)
+    language = Column(String(10), nullable=True)
+    # Set by an admin when the gap has been dealt with (optionally by linking
+    # the document that now covers it). A later identical question starts a new
+    # unresolved row, so a "resolved" topic that is still failing reopens itself.
+    resolved_at = Column(DateTime, nullable=True)
+    linked_document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

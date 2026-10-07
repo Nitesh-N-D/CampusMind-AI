@@ -46,6 +46,15 @@ def apply_migrations(engine: Engine) -> None:
                 source = "published_at" if "published_at" in columns else "CURRENT_TIMESTAMP"
                 conn.execute(text(f"UPDATE notifications SET push_sent_at = {source} WHERE push_sent_at IS NULL"))
 
+    # Answer feedback reasons and the unanswered-questions workflow.
+    for table, new_columns in ADDED_COLUMNS.items():
+        if table in tables:
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for name, ddl in new_columns:
+                if name not in existing:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
     # Tables for features that were removed from the product (the Timeline
     # page and What Changed?). Nothing reads or writes them any more; dropping
     # them keeps the schema honest about what the app does. A table the
@@ -57,6 +66,16 @@ def apply_migrations(engine: Engine) -> None:
             for table in removed:
                 conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
 
+
+ADDED_COLUMNS = {
+    "chat_messages": (("feedback_reason", "VARCHAR(30)"),),
+    "search_logs": (
+        ("reason", "VARCHAR(30)"),
+        ("language", "VARCHAR(10)"),
+        ("resolved_at", "TIMESTAMP"),
+        ("linked_document_id", "INTEGER"),
+    ),
+}
 
 REMOVED_TABLES = ("extracted_events", "document_change_logs")
 

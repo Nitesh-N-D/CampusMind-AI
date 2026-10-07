@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import admin, auth, chat, documents, notifications, profile, push, reminders
+from app.api import admin, admin_insights, auth, chat, documents, notifications, profile, push, reminders
 from app.core.config import settings
 from app.core.logging_config import configure_logging, logger
 from app.core.security import get_current_user
@@ -171,6 +171,7 @@ app.include_router(admin.router)
 app.include_router(notifications.router)
 app.include_router(reminders.router)
 app.include_router(push.router)
+app.include_router(admin_insights.router)
 
 
 # Signed-in only and deliberately minimal: no provider, environment, or

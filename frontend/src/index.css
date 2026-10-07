@@ -72,11 +72,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --radius-card: 12px;
-  --radius-control: 8px;
+  /* Restrained corners: panels 6px, controls 5px. Structure comes from
+     borders and dividers, not from floating shadowed cards. */
+  --radius-card: 6px;
+  --radius-control: 5px;
 
-  --shadow-card: 0 1px 2px rgba(15, 24, 60, 0.05), 0 4px 14px rgba(15, 24, 60, 0.04);
-  --shadow-raised: 0 2px 6px rgba(15, 24, 60, 0.07), 0 12px 32px rgba(15, 24, 60, 0.09);
+  --shadow-card: none;
+  --shadow-raised: 0 8px 24px rgba(15, 24, 60, 0.12);
 }
 
 html {
@@ -138,8 +140,8 @@ html {
   --color-violet-50: #5565e61f;
   --color-violet-100: #5565e638;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(0, 0, 0, 0.18);
-  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --shadow-card: none;
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.35);
 
   color-scheme: dark;
 }
@@ -182,16 +184,26 @@ h3 {
   border: 2px solid var(--color-paper-100);
 }
 
-/* Brand gradient for the few places that should feel premium: primary
-   actions and the user's own chat bubble. Everything else stays flat. */
+/* Solid brand fill for primary actions and the user's own chat message.
+   Flat on purpose: no gradient. */
 .bg-brand {
-  background-image: linear-gradient(135deg, var(--color-navy-600), var(--color-navy-700) 55%, #5b45c9);
+  background-color: var(--color-navy-700);
 }
 
 /* Soft hero wash behind the chat empty state / landing, never behind text
    blocks that need contrast. */
 .bg-hero-wash {
   background-image: radial-gradient(60% 80% at 50% 0%, var(--color-violet-50), transparent 70%);
+}
+
+/* Editorial labels: small mono caps used for section labels, metadata keys
+   and status tags. The product's "official record" voice. */
+.label-caps {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-500);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -19,11 +19,14 @@ export function AskCampusMindButton({ title }: { title: string }) {
   const navigate = useNavigate();
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       className="!py-1.5 !px-3"
       title={t("notif.askAiHint")}
       onClick={() => navigate(`/chat?ask=${encodeURIComponent(t("notif.askPrompt", { title }))}`)}
     >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path d="M4 5h16v11H8l-4 4V5Z" strokeWidth="1.7" strokeLinejoin="round" />
+      </svg>
       {t("notif.askAi")}
     </Button>
   );

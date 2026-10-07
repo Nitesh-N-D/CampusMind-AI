@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Wordmark } from "@/components/Brand";
+import { MarkIcon, Wordmark } from "@/components/Brand";
 import { UserMenu } from "@/components/UserMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuthStore } from "@/lib/authStore";
-import { useT, type MessageKey } from "@/lib/i18n";
+import { useNotificationStore } from "@/lib/notificationStore";
+import { useT } from "@/lib/i18n";
 import { usePageMeta } from "@/lib/usePageMeta";
 
 interface NavItem {
@@ -14,30 +15,15 @@ interface NavItem {
 }
 
 const Icon = {
-  chat: (
-    <path d="M4 5h16v11H8l-4 4V5Z" strokeWidth="1.6" strokeLinejoin="round" />
-  ),
-  docs: (
-    <path
-      d="M7 3h7l5 5v13H7V3Z M14 3v5h5"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-  ),
+  chat: <path d="M4 5h16v11H8l-4 4V5Z" strokeWidth="1.6" strokeLinejoin="round" />,
+  docs: <path d="M7 3h7l5 5v13H7V3Z M14 3v5h5" strokeWidth="1.6" strokeLinejoin="round" />,
   profile: (
     <>
       <circle cx="12" cy="8" r="3.4" strokeWidth="1.6" />
       <path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6" strokeWidth="1.6" strokeLinecap="round" />
     </>
   ),
-  health: (
-    <path
-      d="M4 12h4l2-6 4 12 2-6h4"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  ),
+  health: <path d="M4 12h4l2-6 4 12 2-6h4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
   conflict: (
     <>
       <path d="M12 3 3 20h18L12 3Z" strokeWidth="1.6" strokeLinejoin="round" />
@@ -51,7 +37,12 @@ const Icon = {
     </>
   ),
   bell: (
-    <path d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15L6 17Z M10 21h4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15L6 17Z M10 21h4"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   ),
   calendar: (
     <>
@@ -59,11 +50,7 @@ const Icon = {
       <path d="M4 10h16M9 3v4M15 3v4" strokeWidth="1.6" strokeLinecap="round" />
     </>
   ),
-  insights: (
-    <>
-      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeWidth="1.6" strokeLinecap="round" />
-    </>
-  ),
+  insights: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeWidth="1.6" strokeLinecap="round" />,
   settings: (
     <>
       <circle cx="12" cy="12" r="3" strokeWidth="1.6" />
@@ -78,7 +65,7 @@ const Icon = {
 
 function NavIcon({ path }: { path: ReactNode }) {
   return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" className="shrink-0">
       {path}
     </svg>
   );
@@ -89,8 +76,8 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Admins manage the workspace, so they get a full navigation rail. Chat is
-// only a verification tool for them, so it sits under its own "Verify" group.
+// Admins manage the workspace. Chat is only a verification tool for them, so
+// it sits under its own "Verify" group.
 const adminNav: NavSection[] = [
   {
     label: "Manage workspace",
@@ -108,14 +95,10 @@ const adminNav: NavSection[] = [
     label: "Verify",
     items: [{ to: "/chat", label: "Test a question", icon: <NavIcon path={Icon.chat} /> }],
   },
-];
-
-// Students and faculty only have the assistant and their profile, so they
-// get two small header links instead of a sidebar - chat gets the screen.
-const endUserNav: { to: string; labelKey: MessageKey; icon: ReactNode }[] = [
-  { to: "/chat", labelKey: "nav.assistant", icon: <NavIcon path={Icon.chat} /> },
-  { to: "/reminders", labelKey: "nav.reminders", icon: <NavIcon path={Icon.calendar} /> },
-  { to: "/profile", labelKey: "nav.profile", icon: <NavIcon path={Icon.profile} /> },
+  {
+    label: "Account",
+    items: [{ to: "/profile", label: "Profile", icon: <NavIcon path={Icon.profile} /> }],
+  },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -132,144 +115,215 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/settings": "Settings",
 };
 
+const RAIL_KEY = "cm_nav_collapsed";
+
+function readCollapsed(): boolean | null {
+  try {
+    const v = localStorage.getItem(RAIL_KEY);
+    return v === "1" ? true : v === "0" ? false : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Layout for every signed-in page. The header (with the account menu on the
- * right) is identical everywhere; `fullBleed` pages such as chat fill the
- * space below it instead of sitting in a centered, padded column.
+ * Layout for every signed-in page: one sidebar for every role, grouped into
+ * labelled sections. Expanded it shows text labels; collapsed it is an icon
+ * rail (each item keeps an accessible name and a tooltip). Below `md` it
+ * becomes a drawer opened from a labelled "Menu" button in the top bar.
+ * `fullBleed` pages such as chat fill the space instead of a padded column.
  */
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const { role, collegeName } = useAuthStore();
   const t = useT();
+  const unread = useNotificationStore((s) => s.unread);
+  const location = useLocation();
+  const title = PAGE_TITLES[location.pathname] ?? "Workspace";
   // Signed-in pages are private: give each a meaningful tab title and keep
   // them out of search results.
-  usePageMeta({ title: PAGE_TITLES[useLocation().pathname] ?? "Workspace", noindex: true });
+  usePageMeta({ title, noindex: true });
   const isAdmin = role === "admin";
-  const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Chat has its own conversation list, so the rail starts collapsed there
+  // until the user chooses otherwise.
+  const [stored, setStored] = useState<boolean | null>(readCollapsed);
+  const collapsed = stored ?? fullBleed;
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setStored(next);
+    try {
+      localStorage.setItem(RAIL_KEY, next ? "1" : "0");
+    } catch {
+      // Not persisted; still applies for this session.
+    }
+  };
 
   useEffect(() => setDrawerOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  const sections: NavSection[] = isAdmin
+    ? adminNav
+    : [
+        {
+          label: "Campus",
+          items: [
+            { to: "/chat", label: t("nav.assistant"), icon: <NavIcon path={Icon.chat} /> },
+            { to: "/notifications", label: t("nav.notifications"), icon: <NavIcon path={Icon.bell} /> },
+            { to: "/reminders", label: t("nav.reminders"), icon: <NavIcon path={Icon.calendar} /> },
+          ],
+        },
+        {
+          label: "Account",
+          items: [{ to: "/profile", label: t("nav.profile"), icon: <NavIcon path={Icon.profile} /> }],
+        },
+      ];
+
+  // `rail` = the collapsed desktop presentation; the mobile drawer is never a rail.
+  const renderNav = (rail: boolean) => (
+    <nav aria-label="Main" className="flex-1 py-4 overflow-y-auto">
+      {sections.map((section) => (
+        <div key={section.label} className="mb-5">
+          {rail ? (
+            <div className="mx-3 mb-1.5 border-t border-line" aria-hidden="true" />
+          ) : (
+            <p className="label-caps px-5 mb-1.5">{section.label}</p>
+          )}
+          <div className="flex flex-col">
+            {section.items.map((item) => {
+              const badge = item.to === "/notifications" && !isAdmin && unread > 0;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end
+                  title={rail ? item.label : undefined}
+                  aria-label={rail ? item.label : undefined}
+                  className={({ isActive }) =>
+                    `relative flex items-center gap-3 min-h-11 text-sm border-l-2 transition-colors ${
+                      rail ? "justify-center px-0" : "px-5"
+                    } ${
+                      isActive
+                        ? "border-violet-500 bg-violet-50 text-violet-600 font-medium"
+                        : "border-transparent text-ink-700 hover:bg-surface-hover hover:text-ink-950"
+                    }`
+                  }
+                >
+                  {item.icon}
+                  {!rail && <span className="truncate">{item.label}</span>}
+                  {badge && (
+                    <span
+                      className={`min-w-5 h-5 px-1 rounded-[3px] bg-seal-coral-600 text-white text-[11px] leading-5 font-medium text-center ${
+                        rail ? "absolute top-1.5 right-2" : "ml-auto"
+                      }`}
+                      aria-label={`${unread} unread`}
+                    >
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
 
   return (
     <div className={`bg-paper-100 flex ${fullBleed ? "h-dvh overflow-hidden" : "min-h-dvh"}`}>
-      {isAdmin && (
-        <>
-          <aside
-            aria-label="Workspace navigation"
-            className={`fixed md:sticky top-0 left-0 z-40 h-dvh w-64 shrink-0 bg-navy-900 text-on-navy flex flex-col transition-transform duration-200 ${
-              drawerOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-            }`}
-          >
-            <div className="h-14 flex items-center justify-between px-5 border-b border-white/10 shrink-0">
-              <Link to="/admin" aria-label="Knowledge health">
-                <Wordmark dark />
-              </Link>
+      {/* Desktop sidebar */}
+      <aside
+        aria-label="Workspace navigation"
+        className={`hidden md:flex sticky top-0 h-dvh shrink-0 flex-col bg-surface border-r border-line transition-[width] duration-200 ${
+          collapsed ? "w-16" : "w-60"
+        }`}
+      >
+        <div className={`h-14 flex items-center border-b border-line shrink-0 ${collapsed ? "justify-center" : "px-5"}`}>
+          <Link to={isAdmin ? "/admin" : "/chat"} aria-label="CampusMind AI home">
+            {collapsed ? <MarkIcon size={26} /> : <Wordmark className="text-base" />}
+          </Link>
+        </div>
+        {!collapsed && collegeName && (
+          <div className="px-5 py-3 border-b border-line">
+            <p className="label-caps">{isAdmin ? "Workspace" : "College"}</p>
+            <p className="text-sm font-medium text-ink-900 mt-0.5 truncate">{collegeName}</p>
+          </div>
+        )}
+        {renderNav(collapsed)}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          title={collapsed ? "Expand navigation" : "Collapse navigation"}
+          className={`h-11 shrink-0 border-t border-line flex items-center gap-2 text-sm text-ink-500 hover:text-ink-950 hover:bg-surface-hover ${
+            collapsed ? "justify-center" : "px-5"
+          }`}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path
+              d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {!collapsed && <span>Collapse</span>}
+        </button>
+      </aside>
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Navigation">
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="absolute inset-0 bg-black/45"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-surface border-r border-line flex flex-col">
+            <div className="h-14 flex items-center justify-between px-5 border-b border-line shrink-0">
+              <Wordmark className="text-base" />
               <button
-                aria-label="Close menu"
+                type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="md:hidden w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
+                className="min-h-10 px-3 -mr-2 rounded-[var(--radius-control)] text-sm text-ink-700 hover:bg-surface-hover"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6 6 18" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
+                Close
               </button>
             </div>
-
-            <div className="px-5 py-4 border-b border-white/10">
-              <p className="text-[11px] uppercase tracking-wider text-on-navy-muted/70">Workspace</p>
-              <p className="font-medium text-sm mt-0.5 truncate">{collegeName}</p>
-            </div>
-
-            <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
-              {adminNav.map((section) => (
-                <div key={section.label}>
-                  <p className="px-3 mb-1.5 text-[11px] uppercase tracking-wider text-on-navy-muted/70">
-                    {section.label}
-                  </p>
-                  <div className="space-y-1">
-                    {section.items.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-control)] text-sm transition-colors ${
-                            isActive
-                              ? "bg-white/10 text-white font-medium"
-                              : "text-on-navy-muted hover:bg-white/5 hover:text-white"
-                          }`
-                        }
-                      >
-                        {item.icon}
-                        {item.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
+            {collegeName && (
+              <div className="px-5 py-3 border-b border-line">
+                <p className="label-caps">{isAdmin ? "Workspace" : "College"}</p>
+                <p className="text-sm font-medium text-ink-900 mt-0.5 truncate">{collegeName}</p>
+              </div>
+            )}
+            {renderNav(false)}
           </aside>
-
-          {drawerOpen && (
-            <button
-              aria-label="Close menu"
-              className="fixed inset-0 bg-black/40 z-30 md:hidden"
-              onClick={() => setDrawerOpen(false)}
-            />
-          )}
-        </>
+        </div>
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-20 h-14 shrink-0 bg-surface/90 backdrop-blur border-b border-line flex items-center gap-2 sm:gap-4 px-3 sm:px-5">
-          {isAdmin ? (
-            <>
-              <button
-                aria-label="Open menu"
-                aria-expanded={drawerOpen}
-                onClick={() => setDrawerOpen(true)}
-                className="md:hidden w-9 h-9 flex items-center justify-center rounded-[var(--radius-control)] text-ink-700 hover:bg-surface-hover"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                  <path d="M4 7h16M4 12h16M4 17h16" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
-              <Link to="/admin" className="md:hidden" aria-label="Knowledge health">
-                <Wordmark className="text-base" />
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link to="/chat" aria-label="CampusMind AI assistant" className="shrink-0">
-                <Wordmark className="text-base" />
-              </Link>
-              {collegeName && (
-                <span className="hidden lg:block text-xs text-ink-500 truncate border-l border-line pl-4 max-w-[16rem]">
-                  {collegeName}
-                </span>
-              )}
-              <nav aria-label="Main" className="flex items-center gap-1 ml-auto">
-                {endUserNav.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end
-                    aria-label={t(item.labelKey)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-[var(--radius-control)] text-sm transition-colors ${
-                        isActive
-                          ? "bg-violet-50 text-violet-600 font-medium"
-                          : "text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
-                      }`
-                    }
-                  >
-                    {item.icon}
-                    <span className="hidden sm:inline">{t(item.labelKey)}</span>
-                  </NavLink>
-                ))}
-              </nav>
-            </>
-          )}
-          <div className={isAdmin ? "ml-auto" : "flex items-center gap-1 border-l border-line pl-2 sm:pl-3"}>
+        <header className="sticky top-0 z-20 h-14 shrink-0 bg-surface border-b border-line flex items-center gap-2 sm:gap-3 px-3 sm:px-5">
+          <button
+            type="button"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+            className="md:hidden inline-flex items-center gap-2 min-h-10 px-2.5 -ml-1 rounded-[var(--radius-control)] text-sm font-medium text-ink-800 border border-line-strong hover:bg-surface-hover"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            Menu
+          </button>
+          <h2 className="font-display text-base text-ink-950 truncate">{title}</h2>
+          <div className="ml-auto flex items-center gap-1">
             {!isAdmin && <NotificationBell />}
             <UserMenu />
           </div>

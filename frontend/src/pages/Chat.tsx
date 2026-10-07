@@ -347,7 +347,7 @@ export default function Chat() {
           {!sessionsLoading &&
             groupSessions(filteredSessions).map((group) => (
               <div key={group.label} className="mb-3">
-                <p className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wider text-ink-500">{group.label}</p>
+                <p className="label-caps px-3 pt-2 pb-1">{group.label}</p>
                 {group.items.map((s) => (
                   <div
                     key={s.id}
@@ -371,7 +371,7 @@ export default function Chat() {
                       onClick={() => deleteSession(s.id)}
                       aria-label={`${t("chat.deleteChat")}: ${s.title || t("chat.newChat")}`}
                       title={t("chat.deleteChat")}
-                      className="shrink-0 w-8 h-8 mr-1 flex items-center justify-center rounded-full text-ink-400 hover:text-seal-coral-700 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
+                      className="shrink-0 h-9 min-w-9 px-2 mr-1 flex items-center justify-center gap-1 rounded-[var(--radius-control)] text-xs text-ink-500 hover:text-seal-coral-700 hover:bg-surface-hover"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path
@@ -381,6 +381,7 @@ export default function Chat() {
                           strokeLinejoin="round"
                         />
                       </svg>
+                      <span>{t("chat.delete")}</span>
                     </button>
                   </div>
                 ))}
@@ -483,9 +484,9 @@ export default function Chat() {
                 onClick={() => setExportOpen(true)}
                 aria-label={t("chat.export")}
                 title={t("chat.export")}
-                className="h-9 w-9 shrink-0 flex items-center justify-center rounded-[var(--radius-control)] text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
+                className="h-9 px-2.5 shrink-0 flex items-center gap-1.5 rounded-[var(--radius-control)] border border-line text-xs text-ink-700 hover:text-ink-950 hover:bg-surface-hover"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                   <path
                     d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"
                     strokeWidth="1.6"
@@ -493,6 +494,7 @@ export default function Chat() {
                     strokeLinejoin="round"
                   />
                 </svg>
+                <span className="hidden sm:inline">{t("chat.exportShort")}</span>
               </button>
             )}
           </div>
@@ -500,7 +502,7 @@ export default function Chat() {
           <div className="flex-1 overflow-y-auto" aria-live="polite">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-7">
               {messages.length === 0 && (
-                <div className="pt-4 sm:pt-12 bg-hero-wash rounded-3xl -mx-2 px-2">
+                <div className="pt-4 sm:pt-10">
                   <h2 className="font-display text-2xl sm:text-3xl text-ink-950">
                     {isAdmin
                       ? "Spot-check your knowledge base"
@@ -515,14 +517,14 @@ export default function Chat() {
                   </p>
                   {!isAdmin && (
                     <div className="mt-6">
-                      <p className="text-[11px] uppercase tracking-wider text-ink-500 mb-2">{t("chat.quickActions")}</p>
+                      <p className="label-caps mb-2">{t("chat.quickActions")}</p>
                       <div className="flex flex-wrap gap-2">
                         {QUICK_ACTIONS.map((a) => (
                           <button
                             key={a.key}
                             onClick={() => send(a.query)}
                             disabled={sending}
-                            className="text-sm bg-surface hover:bg-violet-50 border border-line hover:border-violet-500 text-ink-800 px-3.5 h-9 rounded-full transition-colors disabled:opacity-50"
+                            className="text-sm bg-surface hover:bg-violet-50 border border-line hover:border-violet-500 text-ink-800 px-3.5 h-10 rounded-[var(--radius-control)] transition-colors disabled:opacity-50"
                           >
                             {t(a.key)}
                           </button>
@@ -558,7 +560,7 @@ export default function Chat() {
                 e.preventDefault();
                 send(input);
               }}
-              className="max-w-3xl mx-auto flex items-end gap-2 bg-surface border border-line-strong focus-within:border-violet-500 rounded-2xl p-2 shadow-[var(--shadow-card)] transition-colors"
+              className="max-w-3xl mx-auto flex items-end gap-2 bg-surface border border-line-strong focus-within:border-violet-500 rounded-[var(--radius-card)] p-2 transition-colors"
             >
               <label htmlFor="chat-input" className="sr-only">
                 {t("chat.askLabel")}
@@ -584,7 +586,7 @@ export default function Chat() {
                   onClick={() => (voice.listening ? voice.stop() : voice.start())}
                   aria-label={voice.listening ? "Stop voice input" : "Start voice input"}
                   aria-pressed={voice.listening}
-                  className={`h-10 w-10 shrink-0 flex items-center justify-center rounded-full transition-colors ${
+                  className={`h-10 px-3 shrink-0 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] border border-line transition-colors ${
                     voice.listening
                       ? "bg-seal-coral-600 text-white animate-pulse"
                       : "text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
@@ -594,13 +596,13 @@ export default function Chat() {
                     <rect x="9" y="3" width="6" height="11" rx="3" strokeWidth="1.6" />
                     <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
+                  <span className="hidden sm:inline">{voice.listening ? t("chat.voiceStop") : t("chat.voiceStart")}</span>
                 </button>
               )}
               <button
                 type="submit"
                 disabled={sending || !input.trim()}
-                aria-label={t("chat.send")}
-                className="h-10 w-10 shrink-0 flex items-center justify-center rounded-full bg-brand text-on-navy hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="h-10 px-4 shrink-0 flex items-center gap-2 text-sm font-medium rounded-[var(--radius-control)] bg-brand text-on-navy hover:bg-navy-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {sending ? (
                   <Spinner className="w-4 h-4" />
@@ -609,6 +611,7 @@ export default function Chat() {
                     <path d="M12 19V5M5 12l7-7 7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
+                {t("chat.send")}
               </button>
             </form>
             <p className="max-w-3xl mx-auto text-center text-[11px] text-ink-500 mt-2 px-2">{t("chat.disclaimer")}</p>
@@ -665,7 +668,7 @@ function MessageBubble({
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-brand text-on-navy rounded-2xl rounded-br-md px-4 py-2.5 text-sm max-w-[85%] sm:max-w-[75%] whitespace-pre-wrap break-words">
+        <div className="bg-brand text-on-navy rounded-[var(--radius-card)] px-4 py-2.5 text-sm max-w-[85%] sm:max-w-[75%] whitespace-pre-wrap break-words">
           {message.content}
         </div>
       </div>
@@ -677,7 +680,7 @@ function MessageBubble({
 
   return (
     <div className="flex gap-3">
-      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-full border border-line bg-surface flex items-center justify-center">
+      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-[var(--radius-control)] border border-line bg-surface flex items-center justify-center">
         <MarkIcon size={18} />
       </div>
       <div className="min-w-0 flex-1">
@@ -693,61 +696,52 @@ function MessageBubble({
             </div>
 
             {lowConfidence && (
-              <p className="mt-2 text-xs text-seal-amber-900 bg-seal-amber-50 border border-seal-amber-100 rounded-[var(--radius-control)] px-3 py-2">
+              <p className="mt-3 text-xs text-seal-amber-900 border-l-2 border-seal-amber-600 bg-seal-amber-50 px-3 py-2">
                 {t("chat.lowConfidence")}
               </p>
             )}
 
             {message.hasConflict && message.conflicts && message.conflicts.length > 0 && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-4 space-y-3">
                 {message.conflicts.map((c, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-2.5 text-xs text-seal-amber-900 bg-seal-amber-50 border border-seal-amber-100 rounded-[var(--radius-control)] px-3.5 py-3"
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      className="shrink-0 mt-0.5"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 3 3 20h18L12 3Z" strokeWidth="1.8" strokeLinejoin="round" />
-                      <path d="M12 9.5v4.5M12 17h.01" strokeWidth="1.8" strokeLinecap="round" />
-                    </svg>
-                    <div>
-                      <p className="font-medium">{t("chat.conflictTitle", { topic: c.topic })}</p>
-                      <p className="mt-1">
-                        {t("chat.conflictBody", { a: c.value_a, b: c.value_b })} {c.reasoning}
-                      </p>
+                  <div key={i} className="border border-seal-amber-600/40 rounded-[var(--radius-card)] overflow-hidden">
+                    <p className="label-caps !text-seal-amber-900 bg-seal-amber-50 px-3 py-2 border-b border-seal-amber-600/30">
+                      {t("chat.conflictTitle", { topic: c.topic })}
+                    </p>
+                    <div className="grid sm:grid-cols-2 sm:divide-x divide-y sm:divide-y-0 divide-line">
+                      <div className="px-3 py-2.5">
+                        <p className="label-caps">A</p>
+                        <p className="text-sm text-ink-900 mt-1 break-words">{c.value_a}</p>
+                      </div>
+                      <div className="px-3 py-2.5">
+                        <p className="label-caps">B</p>
+                        <p className="text-sm text-ink-900 mt-1 break-words">{c.value_b}</p>
+                      </div>
                     </div>
+                    {c.reasoning && <p className="text-xs text-ink-700 px-3 py-2 border-t border-line">{c.reasoning}</p>}
                   </div>
                 ))}
               </div>
             )}
 
             {message.citations && message.citations.length > 0 && (
-              <div className="mt-4">
-                <p className="text-[11px] uppercase tracking-wider text-ink-500 mb-2">{t("chat.sources")}</p>
-                <div className="grid gap-2 sm:grid-cols-2">
+              <div className="mt-4 border-t border-line pt-3">
+                <p className="label-caps mb-1">{t("chat.sources")}</p>
+                <ol className="divide-y divide-line">
                   {message.citations.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 border border-line rounded-[var(--radius-control)] px-3 py-2.5 bg-surface"
-                    >
-                      <Seal score={c.trust_score} level={(c.trust_level as TrustLevel) || "medium"} size="sm" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-ink-800 truncate">{c.document_title}</p>
-                        <p className="text-[11px] text-ink-500 truncate" style={{ fontFamily: "var(--font-mono)" }}>
+                    <li key={i} className="flex items-center gap-3 py-2">
+                      <span className="font-mono text-xs text-ink-500 w-5 shrink-0">[{i + 1}]</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-ink-800 truncate">{c.document_title}</p>
+                        <p className="text-xs text-ink-500 truncate font-mono">
                           {c.page ? `Page ${c.page}` : c.section || "Source"}
                           {c.department ? ` - ${c.department}` : ""}
                         </p>
                       </div>
-                    </div>
+                      <Seal score={c.trust_score} level={(c.trust_level as TrustLevel) || "medium"} size="sm" />
+                    </li>
                   ))}
-                </div>
+                </ol>
               </div>
             )}
 
@@ -762,13 +756,13 @@ function MessageBubble({
                   onClick={copy}
                   aria-label={t("chat.copy")}
                   title={copied ? t("chat.copied") : t("chat.copy")}
-                  className="h-8 px-2 flex items-center gap-1 rounded-full text-ink-400 hover:text-ink-800 hover:bg-surface-hover text-[11px]"
+                  className="h-9 px-2.5 flex items-center gap-1.5 rounded-[var(--radius-control)] text-ink-600 hover:text-ink-950 hover:bg-surface-hover text-xs"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth="1.6" />
                     <path d="M5 15V6a2 2 0 0 1 2-2h8" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
-                  {copied && <span role="status">{t("chat.copied")}</span>}
+                  <span role="status">{copied ? t("chat.copied") : t("chat.copy")}</span>
                 </button>
                 {!message.abstained && typeof message.confidence === "number" && (
                   <>
@@ -781,13 +775,14 @@ function MessageBubble({
                         setFeedbackGiven("up");
                         setAskReason(false);
                       }}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-surface-hover ${
-                        feedbackGiven === "up" ? "text-seal-teal-700" : "text-ink-400 hover:text-ink-800"
+                      className={`h-9 px-2.5 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] transition-colors hover:bg-surface-hover ${
+                        feedbackGiven === "up" ? "text-seal-teal-700 font-medium" : "text-ink-600 hover:text-ink-950"
                       }`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M7 22V11l5-9 1.5 1L12 11h8l-2 11H9l-2-1Z" strokeWidth="1.6" strokeLinejoin="round" />
                       </svg>
+                      {t("chat.helpful")}
                     </button>
                     <button
                       aria-label={t("chat.notHelpful")}
@@ -798,13 +793,14 @@ function MessageBubble({
                         setFeedbackGiven("down");
                         setAskReason(true);
                       }}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-surface-hover ${
-                        feedbackGiven === "down" ? "text-seal-coral-700" : "text-ink-400 hover:text-ink-800"
+                      className={`h-9 px-2.5 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] transition-colors hover:bg-surface-hover ${
+                        feedbackGiven === "down" ? "text-seal-coral-700 font-medium" : "text-ink-600 hover:text-ink-950"
                       }`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M17 2v11l-5 9-1.5-1L12 13H4l2-11h11l2 1Z" strokeWidth="1.6" strokeLinejoin="round" />
                       </svg>
+                      {t("chat.notHelpful")}
                     </button>
                   </>
                 )}
@@ -822,7 +818,7 @@ function MessageBubble({
                         onFeedback(message.id, "down", r);
                         setAskReason(false);
                       }}
-                      className="text-xs px-3 h-8 rounded-full border border-line bg-surface hover:border-violet-500 hover:bg-violet-50 text-ink-800"
+                      className="text-xs px-3 h-9 rounded-[var(--radius-control)] border border-line bg-surface hover:border-violet-500 hover:bg-violet-50 text-ink-800"
                     >
                       {t(`reason.${r}` as MessageKey)}
                     </button>

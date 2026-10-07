@@ -9,12 +9,12 @@ export function Button({
   variant?: "primary" | "secondary" | "ghost" | "danger";
 }) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2";
+    "inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 min-h-10 text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2";
   const variants: Record<string, string> = {
-    primary: "bg-brand text-on-navy hover:brightness-110 active:brightness-95 shadow-[var(--shadow-card)]",
+    primary: "bg-brand text-on-navy hover:bg-navy-600 active:bg-navy-500",
     secondary:
       "bg-surface text-ink-900 border border-line-strong hover:border-ink-400 hover:text-ink-950",
-    ghost: "text-ink-700 hover:bg-paper-200",
+    ghost: "text-ink-700 hover:bg-surface-hover",
     danger: "bg-seal-coral-600 text-white hover:brightness-110",
   };
   return (
@@ -102,7 +102,9 @@ export function Badge({
     violet: "bg-violet-100 text-violet-600",
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tones[tone]}`}>
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-[3px] font-mono text-[11px] uppercase tracking-wide ${tones[tone]}`}
+    >
       {children}
     </span>
   );
@@ -120,15 +122,15 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center text-center gap-3 py-16 px-6">
+    <div className="flex flex-col items-start gap-3 py-12 px-6 sm:px-8 border border-dashed border-line-strong rounded-[var(--radius-card)] bg-surface-2/60">
       {icon && (
-        <div className="w-12 h-12 rounded-full bg-paper-200 flex items-center justify-center text-ink-500 text-xl">
+        <div className="w-10 h-10 rounded-[var(--radius-control)] bg-paper-200 flex items-center justify-center text-ink-500 text-lg">
           {icon}
         </div>
       )}
       <h3 className="font-display text-lg text-ink-900">{title}</h3>
-      {body && <p className="text-sm text-ink-500 max-w-sm">{body}</p>}
-      {action}
+      {body && <p className="text-sm text-ink-500 max-w-md">{body}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
@@ -156,7 +158,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
     <div className="bg-surface border border-line rounded-[var(--radius-card)] p-5 flex gap-4">
-      <Skeleton className="w-[52px] h-[52px] rounded-full shrink-0" />
+      <Skeleton className="w-[52px] h-[52px] rounded-[var(--radius-control)] shrink-0" />
       <div className="flex-1 flex flex-col gap-2.5 min-w-0">
         <Skeleton className="h-4 w-2/5" />
         {Array.from({ length: lines }).map((_, i) => (
@@ -179,11 +181,18 @@ export function SkeletonList({ count = 4, lines = 2 }: { count?: number; lines?:
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 bg-seal-coral-50 border border-seal-coral-100 text-seal-coral-900 rounded-[var(--radius-control)] px-4 py-3 text-sm">
-      <span>{message}</span>
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-3 bg-seal-coral-50 border border-seal-coral-100 border-l-4 border-l-seal-coral-600 text-seal-coral-900 rounded-[var(--radius-control)] px-4 py-3 text-sm"
+    >
+      <span className="min-w-0">{message}</span>
       {onRetry && (
-        <button onClick={onRetry} className="font-medium underline underline-offset-2 shrink-0">
-          Retry
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 min-h-9 px-3 rounded-[var(--radius-control)] border border-seal-coral-600 font-medium hover:bg-seal-coral-100"
+        >
+          Try again
         </button>
       )}
     </div>
@@ -202,15 +211,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-      <div>
-        {eyebrow && (
-          <span className="text-xs font-medium uppercase tracking-wider text-violet-600">{eyebrow}</span>
-        )}
-        <h1 className="font-display text-2xl md:text-3xl text-ink-950 mt-1">{title}</h1>
-        {description && <p className="text-ink-500 mt-2 max-w-2xl">{description}</p>}
+    <div className="flex flex-wrap items-end justify-between gap-4 mb-8 pb-5 border-b border-line">
+      <div className="min-w-0">
+        {eyebrow && <span className="label-caps text-violet-600">{eyebrow}</span>}
+        <h1 className="font-display text-2xl md:text-[1.75rem] text-ink-950 mt-1">{title}</h1>
+        {description && <p className="text-ink-500 mt-2 max-w-2xl text-sm md:text-base">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

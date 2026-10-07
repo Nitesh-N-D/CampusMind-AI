@@ -82,7 +82,7 @@
       also requires sign-in and returns only `{"status":"ok"}`
 - [x] Provider abstraction for AI + embeddings (Gemini/OpenAI/Claude/local)
 - [x] Full frontend: 14 pages, responsive, custom design system, real SEO
-- [x] 137-test backend suite covering auth, RBAC, faculty gating, tenant
+- [x] 252-test backend suite covering auth, RBAC, faculty gating, tenant
       isolation, ingestion of every format, retrieval quality, login
       analytics, migrations, RAG, and conflict detection and resolution
 

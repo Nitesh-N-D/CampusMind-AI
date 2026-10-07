@@ -148,6 +148,18 @@ fully deployed.
 Vercel (or custom) domain, find-and-replace every occurrence with yours,
 commit, and redeploy.
 
+The production origin is also hard-coded as `SITE_ORIGIN` in
+`frontend/src/lib/usePageMeta.ts` (used for per-route canonicals), and the
+`og:image`, `og:url`, `twitter:image` and JSON-LD URLs in `index.html` use it
+too. Update all of them together.
+
+Other SEO and PWA files, all in `frontend/public/`: `site.webmanifest`,
+`og-image.png` (1200x630), `favicon.ico`, `favicon.svg`, the PNG favicons,
+`apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, and
+`icon-maskable-512.png`. Vercel serves these as static files before the SPA
+rewrite, so `vercel.json` needs no change. `robots.txt` blocks private routes
+as a courtesy to crawlers only; it is not access control.
+
 ### Google Search Console
 
 1. With your frontend live at its real domain, go to

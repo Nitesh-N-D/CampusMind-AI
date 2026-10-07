@@ -35,7 +35,12 @@ without touching code or infrastructure.
 
 | Feature | What it does |
 |---|---|
-| **Account menu** | One avatar menu in the top-right of every signed-in page for profile, light/dark theme, and sign-out. |
+| **Account menu** | One avatar menu in the top-right of every signed-in page for profile, theme, and sign-out. |
+| **Light / Dark / System theme** | A three-way theme switch on every page, remembered per browser; follows the OS setting by default. |
+| **English, Tamil, Hindi UI** | A language selector for the interface (partial translations fall back to English). |
+| **Admin insights** | Unanswered-question tracking with admin resolve/link, answer-feedback reasons, and college-scoped analytics. |
+| **Installable app and branding** | Web manifest, favicons, app icons, Open Graph/Twitter cards, `robots.txt`, `sitemap.xml`, JSON-LD, and per-route titles; private pages and the 404 are `noindex`. |
+| **Reminder scheduler** | A script and a secret-protected endpoint that send reminder notifications; see `docs/SCHEDULER.md`. It is not scheduled anywhere by default. |
 | **Voice input** | Ask questions by speaking, in English, Tamil, or Hindi, via the browser's native Web Speech API - degrades gracefully with a clear message on unsupported browsers rather than a broken button. |
 | **Chat history download** | Students and faculty download their own conversations (the current one or any selection of past ones) as a PDF or plain-text file, with their name, college, the time of every message, and the sources each answer cited. |
 | **Account export** | Admins download every student and faculty account in their college (name, email, role, status, signup date, last login) as CSV or Excel from the Login activity page. Password hashes are never included. |
@@ -107,7 +112,7 @@ campusmind-ai/
   backend/     FastAPI app - RAG pipeline, auth, ingestion, admin APIs
   frontend/    React + Vite + TypeScript + Tailwind SPA
   docs/        ARCHITECTURE.md, SETUP.md, SECURITY.md, DEPLOYMENT.md,
-               PROJECT_ROADMAP.md, PROJECT_STATUS.md
+               PROJECT_ROADMAP.md, PROJECT_STATUS.md, SCHEDULER.md
 ```
 
 See `docs/ARCHITECTURE.md` for the full RAG pipeline diagram and data model,
@@ -120,9 +125,15 @@ This is a working prototype covering the full core loop (auth, multi-tenant
 isolation, three roles - student/faculty/admin - with faculty-domain gating,
 multi-format ingestion with OCR, RAG chat, trust scoring, temporal
 retrieval, conflict detection, admin dashboard, login analytics, light/dark
-theming) with a 137-test backend suite (`backend/tests/`) covering auth,
-RBAC across all three roles, tenant isolation, ingestion of every supported
-format, retrieval quality, login analytics, and the RAG/conflict pipeline.
+theming) with a 252-test backend suite (`backend/tests/`) covering auth,
+RBAC across all three roles, tenant isolation (including a test that the
+suite never touches real Cloudinary, Supabase, Web Push, or `backend/.env`),
+ingestion of every supported format, retrieval quality, login analytics,
+admin insights, and the RAG/conflict pipeline. The frontend has no automated
+UI tests; type-checking, build, and lint pass, and the branding/SEO work was
+checked with a scripted browser run against the production build.
 Not yet built: streaming responses, and multilingual answers without an AI
 provider (the language choice needs a real Gemini/OpenAI/Claude key to
-actually translate). See `docs/PROJECT_ROADMAP.md`.
+actually translate). Not yet running anywhere: the reminder scheduler. See
+`docs/PROJECT_STATUS.md` for the verified/not-verified breakdown and
+`docs/PROJECT_ROADMAP.md`.

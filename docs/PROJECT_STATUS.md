@@ -217,6 +217,7 @@ pipeline.
 ## 8. Commands to run / test the project
 
 **Backend**
+
 ```bash
 cd backend
 python3 -m venv venv && source venv/bin/activate   # or venv\Scripts\activate on Windows
@@ -227,6 +228,7 @@ python -m pytest tests/ -v                          # full test suite (137 tests
 ```
 
 **Frontend**
+
 ```bash
 cd frontend
 npm install
@@ -236,3 +238,46 @@ npm run build                                        # production build; must be
 npm run lint                                         # oxlint
 npm run preview                                      # preview a production build locally
 ```
+
+## 9. Update: insights, multilingual UI, redesign
+
+Status labels: IMPLEMENTED = code written; TESTED = automated tests run; DEPLOYED / PRODUCTION VERIFIED = not done by this work.
+
+| Feature | Implemented | Tested | Deployed | Prod verified |
+| --- | --- | --- | --- | --- |
+| Test isolation (no .env, Cloudinary, Supabase, real push) | yes | yes (backend) | n/a | n/a |
+| Unanswered-question tracking and admin resolve/link | yes | yes (backend) | no | no |
+| Answer feedback with reasons, admin feedback summary | yes | yes (backend) | no | no |
+| Extended admin analytics (college-scoped) | yes | yes (backend) | no | no |
+| Query-language handling and localized abstain messages | yes | yes (backend) | no | no |
+| UI languages: English, Tamil, Hindi (partial, falls back to English) | yes | build/typecheck only | no | no |
+| Light/Dark/System theme, redesigned tokens | yes | build/typecheck only | no | no |
+| Collapsible chat sidebar, search, delete, quick actions, copy, feedback reasons | yes | build/typecheck only | no | no |
+| Notification "Ask CampusMind" (prefills chat, does not auto-send) | yes | build/typecheck only | no | no |
+| Reminder scheduler script | yes | yes (backend) | no | no |
+
+The backend suite is now **252 tests** (`python -m pytest tests/ -q`), including `test_isolation.py` and `test_insights.py`. The 137 figure in sections 3 and 6 predates this update.
+
+Frontend has no automated UI tests. A scripted Edge check (Playwright against `vite preview`) covered the SEO/branding work below, but not the rest of the UI. See docs/SCHEDULER.md for the scheduler, which is not yet running anywhere.
+
+## 10. Update: branding, icons, SEO and PWA metadata
+
+Frontend only; no backend changes. Not deployed.
+
+| Area | What exists | Where |
+| --- | --- | --- |
+| Favicons and app icons | SVG, ICO (16/32/48), 16 and 32 px PNG, 180 px Apple touch icon, 192 and 512 px icons, 512 px maskable icon | `frontend/public/` |
+| Web manifest | Name, `id`, `scope`, standalone display, brand theme/background colours, `any` and `maskable` icons | `frontend/public/site.webmanifest` |
+| Page metadata | Title, 150-character description, canonical, robots, light/dark `theme-color` | `frontend/index.html` |
+| Social cards | Open Graph and Twitter `summary_large_image` with a 1200x630 image (no `twitter:site`: no verified account) | `index.html`, `public/og-image.png` |
+| Structured data | JSON-LD graph: Organization, WebSite, SoftwareApplication (no ratings, prices or contact details) | `index.html` |
+| Crawling | `robots.txt` disallows `/admin`, `/chat`, `/profile`, `/notifications`, `/reminders`, `/login`; sitemap lists 5 public URLs | `public/robots.txt`, `public/sitemap.xml` |
+| Per-route metadata | `usePageMeta` sets title, description, canonical and robots at runtime and restores them on unmount. Signed-in pages and the 404 are `noindex`; the 404 emits no canonical (`noCanonical`) | `src/lib/usePageMeta.ts`, `AppShell`, `LegalLayout`, public pages |
+| Service worker | Only change: notification icon is `/icon-192.png` instead of the SVG. Push and click handling untouched | `public/sw.js` |
+| Landing header on phones | Theme toggle collapses to one cycling button below `sm`; the duplicate header CTA is hidden; hero grid uses `grid-cols-1` so it no longer overflows at 320 px | `ThemeToggle.tsx`, `Landing.tsx` |
+
+Verified (scripted Edge against the production build): all static assets return 200 with correct types; titles, robots and canonicals are right on `/`, `/login`, `/privacy`, `/register` and an unknown route; metadata restores after navigation; the service worker registers; no console errors or failed requests; no horizontal overflow at 320, 375 and 414 px. `tsc -b`, `npm run build` and `npm run lint` pass (lint reports only existing fast-refresh warnings in `notificationUi.tsx`).
+
+Not verified: the live Vercel site, social-card rendering on Facebook/X/LinkedIn, Search Console or rich-results validation, Lighthouse, push delivery, and the maskable icon on a real device.
+
+Known limits: metadata set by `usePageMeta` is applied by JavaScript, so crawlers that do not run JavaScript see the static `index.html` values on every route (including the homepage canonical on the 404). The OG image uses Segoe UI because the brand fonts were not installed when it was rendered.

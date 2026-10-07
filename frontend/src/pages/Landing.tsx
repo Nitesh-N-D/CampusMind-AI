@@ -68,23 +68,21 @@ export default function Landing() {
             </a>
           </nav>
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <ThemeToggle />
+            <ThemeToggle compactOnMobile />
             <Link to="/login" className="text-sm font-medium text-ink-800 hover:text-ink-950 px-2">
               Sign in
             </Link>
-            <Link to="/register-college">
-              <Button className="!py-2 !px-3 sm:!px-3.5 text-xs sm:text-sm whitespace-nowrap">
-                <span className="hidden sm:inline">Set up your college</span>
-                <span className="sm:hidden">Set up</span>
-              </Button>
+            {/* The hero repeats this CTA, so phones skip it here to keep the header on one row. */}
+            <Link to="/register-college" className="hidden sm:block">
+              <Button className="!py-2 !px-3.5 text-sm whitespace-nowrap">Set up your college</Button>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 sm:pb-20 grid lg:grid-cols-2 gap-12 lg:gap-14 items-center">
-        <div>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 sm:pb-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-14 items-center">
+        <div className="min-w-0">
           <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
             Grounded campus assistant
           </span>
@@ -114,7 +112,7 @@ export default function Landing() {
         <figure className="relative">
           <div className="bg-surface border border-line rounded-[var(--radius-card)] shadow-[var(--shadow-raised)] p-5 sm:p-6">
             <div className="flex justify-end mb-4">
-              <div className="bg-navy-700 text-on-navy rounded-2xl rounded-br-md px-4 py-2.5 text-sm max-w-[85%]">
+              <div className="bg-brand text-on-navy rounded-2xl rounded-br-md px-4 py-2.5 text-sm max-w-[85%]">
                 What's the minimum attendance requirement?
               </div>
             </div>

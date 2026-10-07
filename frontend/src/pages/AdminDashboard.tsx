@@ -164,7 +164,26 @@ export default function AdminDashboard() {
               <p className="font-display text-2xl text-ink-950">{analytics.low_confidence_responses}</p>
               <p className="text-xs text-ink-500 mt-1">Low confidence</p>
             </div>
+            <div>
+              <p className="font-display text-2xl text-ink-950">{analytics.active_users_30d}</p>
+              <p className="text-xs text-ink-500 mt-1">Active users</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl text-ink-950">
+                {typeof analytics.feedback_helpful_ratio === "number"
+                  ? `${Math.round(analytics.feedback_helpful_ratio * 100)}%`
+                  : "-"}
+              </p>
+              <p className="text-xs text-ink-500 mt-1">Rated helpful</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl text-ink-950">{analytics.reminders_pending}</p>
+              <p className="text-xs text-ink-500 mt-1">Reminders pending</p>
+            </div>
           </div>
+          <Link to="/admin/insights" className="inline-block text-sm text-violet-600 hover:underline mt-4">
+            Review unanswered questions and feedback
+          </Link>
           <h3 className="text-sm font-medium text-ink-800 mt-6 mb-3">Most asked</h3>
           {analytics.top_queries.length === 0 ? (
             <p className="text-sm text-ink-400">No questions logged yet.</p>

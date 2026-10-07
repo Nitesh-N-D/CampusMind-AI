@@ -1,47 +1,54 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 @theme {
-  /* CampusMind AI design tokens - light academic palette.
-     Navy = institutional authority, paper = the document itself.
-     Teal/amber/coral are reserved strictly for trust-tier meaning. */
+  /* CampusMind AI design tokens.
+     One source of truth: every component reads these through Tailwind
+     utilities (bg-surface, text-ink-700, border-line ...), and the dark theme
+     below re-points the same names, so no component carries theme-specific
+     colours. Cool neutral ramp + one cobalt accent; teal/amber/coral are
+     reserved strictly for trust-tier meaning. */
 
-  --color-ink-950: #0d1526;
-  --color-ink-900: #12172b;
-  --color-ink-800: #1c2338;
-  --color-ink-700: #2a3350;
-  --color-ink-500: #545f82;
-  --color-ink-400: #7b84a3;
-  --color-ink-300: #a6accc;
+  /* Text ramp (950 strongest -> 300 faintest) */
+  --color-ink-950: #0b1020;
+  --color-ink-900: #131a2e;
+  --color-ink-800: #232c45;
+  --color-ink-700: #36405d;
+  --color-ink-500: #566180;
+  --color-ink-400: #7482a3;
+  --color-ink-300: #a3aec6;
 
-  --color-navy-900: #14213d;
-  --color-navy-700: #1e2a4a;
-  --color-navy-600: #263562;
-  --color-navy-500: #33447f;
+  /* Brand fills. 900 = the admin rail, 700/600/500 = primary actions. */
+  --color-navy-900: #0f1830;
+  --color-navy-700: #2a3a95;
+  --color-navy-600: #3547b0;
+  --color-navy-500: #4659c9;
 
-  --color-paper-50: #fbfaf6;
-  --color-paper-100: #f6f4ee;
-  --color-paper-200: #ede9dd;
-  --color-paper-300: #ddd8c8;
+  /* Layers: paper-100 app background -> surface cards -> surface-2 insets. */
+  --color-paper-50: #f9fafd;
+  --color-paper-100: #f2f4fa;
+  --color-paper-200: #e8ecf5;
+  --color-paper-300: #d7deec;
 
-  --color-line: #ddd8cc;
-  --color-line-strong: #c7c1ae;
+  --color-line: #e0e5f0;
+  --color-line-strong: #c8d0e3;
 
   --color-surface: #ffffff;
-  --color-surface-2: #f6f4ee;
-  --color-surface-hover: #ede9dd;
+  --color-surface-2: #f7f8fc;
+  --color-surface-hover: #edf0f8;
 
-  /* Text that sits on a navy fill (sidebar, primary buttons, user chat
-     bubbles). Constant across themes because navy fills stay dark. */
-  --color-on-navy: #fbfaf6;
-  --color-on-navy-muted: #c3c8dc;
-  /* The wordmark/logo colour on page backgrounds; flips with the theme. */
-  --color-brand-ink: #14213d;
+  /* Text on brand fills (rail, primary buttons, user bubbles). Constant
+     across themes because those fills stay saturated. */
+  --color-on-navy: #f8f9ff;
+  --color-on-navy-muted: #c3c9e2;
+  /* Wordmark colour on page backgrounds; flips with the theme. */
+  --color-brand-ink: #1b2a6b;
 
-  --color-violet-600: #4b4696;
-  --color-violet-500: #5b57d6;
-  --color-violet-100: #e9e8fb;
-  --color-violet-50: #f3f2fd;
+  /* Accent: links, focus, selected states. */
+  --color-violet-600: #3445c4;
+  --color-violet-500: #5565e6;
+  --color-violet-100: #e1e6fd;
+  --color-violet-50: #eff2fe;
 
   --color-seal-teal-900: #0d3d2e;
   --color-seal-teal-700: #14573f;
@@ -61,15 +68,15 @@
   --color-seal-coral-100: #f9dedb;
   --color-seal-coral-50: #fcefed;
 
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --radius-card: 14px;
+  --radius-card: 12px;
   --radius-control: 8px;
 
-  --shadow-card: 0 1px 2px rgba(20, 33, 61, 0.04), 0 8px 24px rgba(20, 33, 61, 0.05);
-  --shadow-raised: 0 2px 8px rgba(20, 33, 61, 0.08), 0 16px 40px rgba(20, 33, 61, 0.08);
+  --shadow-card: 0 1px 2px rgba(15, 24, 60, 0.05), 0 4px 14px rgba(15, 24, 60, 0.04);
+  --shadow-raised: 0 2px 6px rgba(15, 24, 60, 0.07), 0 12px 32px rgba(15, 24, 60, 0.09);
 }
 
 html {
@@ -77,47 +84,42 @@ html {
 }
 
 /*
-  Dark theme overrides. Because every color in this file is a real CSS
-  custom property (not a static Tailwind value), and every `bg-*`/`text-*`/
-  `border-*` utility Tailwind v4 generates from `@theme` compiles down to
-  `var(--color-x)`, overriding these variables here re-themes the entire
-  app - no per-component dark: variants needed. The navy sidebar in
-  AppShell intentionally stays a constant brand navy in both themes, the
-  same way most professional dashboards (Linear, Vercel, Notion) keep a
-  fixed-dark nav rail regardless of the content theme.
+  Dark theme: layered slate-navy, deliberately not near-black. Background,
+  surface and raised surface each step ~6% lighter so cards read as elevated
+  without glowing borders. Text stays well above WCAG AA on every layer.
 */
 [data-theme="dark"] {
-  --color-paper-50: #0b1120;
-  --color-paper-100: #0f1729;
-  --color-paper-200: #182238;
-  --color-paper-300: #232f4a;
+  --color-paper-50: #1b2236;
+  --color-paper-100: #161c2f;
+  --color-paper-200: #263050;
+  --color-paper-300: #333e60;
 
-  --color-line: #232f4a;
-  --color-line-strong: #34406399;
+  --color-line: #2f3957;
+  --color-line-strong: #434f75;
 
-  --color-surface: #121a2e;
-  --color-surface-2: #172038;
-  --color-surface-hover: #1d2740;
+  --color-surface: #1e2640;
+  --color-surface-2: #242d4a;
+  --color-surface-hover: #2b3556;
 
-  --color-ink-950: #f6f4ee;
-  --color-ink-900: #ece9df;
-  --color-ink-800: #cfccc0;
-  --color-ink-700: #aeaba0;
-  --color-ink-500: #8b8ea8;
-  --color-ink-400: #6d7091;
-  --color-ink-300: #4c4f6b;
+  --color-ink-950: #f4f6fc;
+  --color-ink-900: #e7eaf6;
+  --color-ink-800: #ccd2e6;
+  --color-ink-700: #aeb7d1;
+  --color-ink-500: #96a0bf;
+  --color-ink-400: #7f8aac;
+  --color-ink-300: #5d6888;
 
-  /* Brighter navy so primary buttons and chat bubbles still stand out from
-     dark surfaces. navy-900 (the sidebar rail) stays constant. */
-  --color-navy-700: #2f4278;
-  --color-navy-600: #3a4f8c;
-  --color-navy-500: #4a60a3;
+  /* Brighter fills so primary buttons and bubbles stand out from dark
+     surfaces. navy-900 (the admin rail) is a touch deeper than the page. */
+  --color-navy-900: #111830;
+  --color-navy-700: #4254d6;
+  --color-navy-600: #5062e2;
+  --color-navy-500: #6577ec;
 
-  --color-brand-ink: #f6f4ee;
+  --color-brand-ink: #f4f6fc;
 
-  /* Trust-tier and violet *text* colours are dark in the light palette;
-     these lighter tints keep them readable (WCAG AA) on dark surfaces.
-     The -600 fills are unchanged and always carry white text. */
+  /* Lighter tints keep trust-tier and accent *text* readable (AA) on dark
+     surfaces. The -600 fills are unchanged and always carry white text. */
   --color-seal-teal-900: #a6e6c7;
   --color-seal-teal-700: #7fd4ab;
   --color-seal-teal-100: #1f7a5c55;
@@ -127,14 +129,17 @@ html {
   --color-seal-coral-900: #f8bab3;
   --color-seal-coral-700: #f2958b;
   --color-seal-coral-100: #c1443b55;
-  --color-violet-600: #b0adf7;
-  --color-violet-500: #817df0;
+  --color-violet-600: #aab4ff;
+  --color-violet-500: #8794ff;
 
   --color-seal-teal-50: #0d3d2e33;
   --color-seal-amber-50: #5c3a0d33;
   --color-seal-coral-50: #5c171233;
-  --color-violet-50: #4b469633;
-  --color-violet-100: #4b469655;
+  --color-violet-50: #5565e61f;
+  --color-violet-100: #5565e638;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(0, 0, 0, 0.18);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
 
   color-scheme: dark;
 }
@@ -144,6 +149,13 @@ body {
   background: var(--color-paper-100);
   color: var(--color-ink-900);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
 }
 
 ::selection {
@@ -170,6 +182,18 @@ body {
   border: 2px solid var(--color-paper-100);
 }
 
+/* Brand gradient for the few places that should feel premium: primary
+   actions and the user's own chat bubble. Everything else stays flat. */
+.bg-brand {
+  background-image: linear-gradient(135deg, var(--color-navy-600), var(--color-navy-700) 55%, #5b45c9);
+}
+
+/* Soft hero wash behind the chat empty state / landing, never behind text
+   blocks that need contrast. */
+.bg-hero-wash {
+  background-image: radial-gradient(60% 80% at 50% 0%, var(--color-violet-50), transparent 70%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -188,4 +212,8 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.animate-rise {
+  animation: fadeIn 0.28s ease-out both;
 }

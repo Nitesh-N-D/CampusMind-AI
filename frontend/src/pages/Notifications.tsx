@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
 import { Badge, Button, Card, EmptyState, ErrorBanner, PageHeader, SkeletonList } from "@/components/ui";
 import {
+  AskCampusMindButton,
   AttachmentButtons,
   BackgroundNotificationsControl,
   BrowserAlertsControl,
@@ -134,11 +135,14 @@ export default function Notifications() {
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <AttachmentButtons n={n} />
-              {!n.is_read && (
-                <Button variant="ghost" className="!py-1.5 !px-3" onClick={() => markRead(n)}>
-                  Mark as read
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-1">
+                <AskCampusMindButton title={n.title} />
+                {!n.is_read && (
+                  <Button variant="ghost" className="!py-1.5 !px-3" onClick={() => markRead(n)}>
+                    Mark as read
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         ))}

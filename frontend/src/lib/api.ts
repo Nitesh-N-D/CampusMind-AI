@@ -382,12 +382,49 @@ export interface ConflictRecord {
   created_at: string;
 }
 
+export type FeedbackReason = "incorrect" | "missing" | "poor_citation" | "outdated" | "other";
+
 export interface Analytics {
   total_questions_answered: number;
+  answered_questions: number;
   unanswered_questions: number;
   low_confidence_responses: number;
+  active_users_30d: number;
+  documents_total: number;
+  documents_ready: number;
+  notifications_published: number;
+  reminders_pending: number;
+  feedback_helpful: number;
+  feedback_not_helpful: number;
+  feedback_helpful_ratio: number | null;
   top_queries: { query: string; count: number }[];
   recent_uploads: { id: number; title: string; status: string; created_at: string }[];
+}
+
+export interface UnansweredQuestion {
+  query: string;
+  frequency: number;
+  last_asked: string;
+  avg_confidence: number | null;
+  source_count: number;
+  reason: "no_sources" | "low_confidence" | null;
+  status: "open" | "resolved";
+  linked_document: { id: number; title: string } | null;
+}
+
+export interface FeedbackSummary {
+  helpful: number;
+  not_helpful: number;
+  helpful_ratio: number | null;
+  reasons: Partial<Record<FeedbackReason, number>>;
+  recent_not_helpful: {
+    message_id: number;
+    reason: FeedbackReason | null;
+    note: string | null;
+    answer_excerpt: string;
+    confidence: number | null;
+    created_at: string;
+  }[];
 }
 
 export interface LoginEvent {
@@ -498,8 +535,8 @@ export const api = {
       get<ChatMessageOut[]>(`/api/chat/sessions/${sessionId}/messages`),
     deleteSession: (sessionId: number) =>
       del<{ status: string }>(`/api/chat/sessions/${sessionId}`),
-    feedback: (messageId: number, feedback: "up" | "down", note?: string) =>
-      post(`/api/chat/messages/${messageId}/feedback`, { feedback, note }),
+    feedback: (messageId: number, feedback: "up" | "down", reason?: FeedbackReason, note?: string) =>
+      post(`/api/chat/messages/${messageId}/feedback`, { feedback, reason, note }),
     exportHistory: (sessionIds: number[], format: "pdf" | "txt") =>
       download(
         "/api/chat/export",
@@ -523,6 +560,11 @@ export const api = {
     resolveConflict: (id: number, authoritative_document_id: number, resolution_note?: string) =>
       post(`/api/admin/conflicts/${id}/resolve`, { authoritative_document_id, resolution_note }),
     analytics: () => get<Analytics>("/api/admin/analytics"),
+    unanswered: (status: "open" | "resolved" | "all" = "open") =>
+      get<UnansweredQuestion[]>("/api/admin/unanswered", { status }),
+    resolveUnanswered: (query: string, document_id?: number) =>
+      post<{ status: string; resolved: number }>("/api/admin/unanswered/resolve", { query, document_id }),
+    feedbackSummary: () => get<FeedbackSummary>("/api/admin/feedback"),
     loginEvents: (params: { role?: string; start?: string; end?: string; page?: string; page_size?: string }) =>
       get<LoginEventPage>("/api/admin/login-events", params),
     exportUsers: (format: "csv" | "xlsx") =>

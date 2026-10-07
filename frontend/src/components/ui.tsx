@@ -11,7 +11,7 @@ export function Button({
   const base =
     "inline-flex items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2";
   const variants: Record<string, string> = {
-    primary: "bg-navy-700 text-on-navy hover:bg-navy-900 active:bg-ink-950",
+    primary: "bg-brand text-on-navy hover:brightness-110 active:brightness-95 shadow-[var(--shadow-card)]",
     secondary:
       "bg-surface text-ink-900 border border-line-strong hover:border-ink-400 hover:text-ink-950",
     ghost: "text-ink-700 hover:bg-paper-200",

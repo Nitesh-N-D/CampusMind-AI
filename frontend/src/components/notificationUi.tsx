@@ -9,6 +9,25 @@ import {
   pushSupport,
 } from "@/lib/pushClient";
 import { Badge, Button } from "@/components/ui";
+import { useNavigate } from "react-router-dom";
+import { useT } from "@/lib/i18n";
+
+/** Opens the assistant with a prefilled question about a notice. The student
+ * can edit it before sending; nothing is submitted automatically. */
+export function AskCampusMindButton({ title }: { title: string }) {
+  const t = useT();
+  const navigate = useNavigate();
+  return (
+    <Button
+      variant="ghost"
+      className="!py-1.5 !px-3"
+      title={t("notif.askAiHint")}
+      onClick={() => navigate(`/chat?ask=${encodeURIComponent(t("notif.askPrompt", { title }))}`)}
+    >
+      {t("notif.askAi")}
+    </Button>
+  );
+}
 
 export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   circular: "Circular",

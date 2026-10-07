@@ -4,6 +4,8 @@ import { Wordmark } from "@/components/Brand";
 import { UserMenu } from "@/components/UserMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuthStore } from "@/lib/authStore";
+import { useT, type MessageKey } from "@/lib/i18n";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 interface NavItem {
   to: string;
@@ -57,6 +59,11 @@ const Icon = {
       <path d="M4 10h16M9 3v4M15 3v4" strokeWidth="1.6" strokeLinecap="round" />
     </>
   ),
+  insights: (
+    <>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" strokeWidth="1.6" />
@@ -92,6 +99,7 @@ const adminNav: NavSection[] = [
       { to: "/admin/documents", label: "Documents", icon: <NavIcon path={Icon.docs} /> },
       { to: "/admin/notifications", label: "Notifications", icon: <NavIcon path={Icon.bell} /> },
       { to: "/admin/conflicts", label: "Conflicts", icon: <NavIcon path={Icon.conflict} /> },
+      { to: "/admin/insights", label: "Questions & feedback", icon: <NavIcon path={Icon.insights} /> },
       { to: "/admin/logins", label: "Login activity", icon: <NavIcon path={Icon.logins} /> },
       { to: "/admin/settings", label: "Settings", icon: <NavIcon path={Icon.settings} /> },
     ],
@@ -104,11 +112,25 @@ const adminNav: NavSection[] = [
 
 // Students and faculty only have the assistant and their profile, so they
 // get two small header links instead of a sidebar - chat gets the screen.
-const endUserNav: NavItem[] = [
-  { to: "/chat", label: "Assistant", icon: <NavIcon path={Icon.chat} /> },
-  { to: "/reminders", label: "Reminders", icon: <NavIcon path={Icon.calendar} /> },
-  { to: "/profile", label: "Profile", icon: <NavIcon path={Icon.profile} /> },
+const endUserNav: { to: string; labelKey: MessageKey; icon: ReactNode }[] = [
+  { to: "/chat", labelKey: "nav.assistant", icon: <NavIcon path={Icon.chat} /> },
+  { to: "/reminders", labelKey: "nav.reminders", icon: <NavIcon path={Icon.calendar} /> },
+  { to: "/profile", labelKey: "nav.profile", icon: <NavIcon path={Icon.profile} /> },
 ];
+
+const PAGE_TITLES: Record<string, string> = {
+  "/chat": "Assistant",
+  "/profile": "Profile",
+  "/notifications": "Notifications",
+  "/reminders": "Reminders",
+  "/admin": "Knowledge health",
+  "/admin/documents": "Documents",
+  "/admin/notifications": "Manage notifications",
+  "/admin/insights": "Questions & feedback",
+  "/admin/conflicts": "Conflicts",
+  "/admin/logins": "Login activity",
+  "/admin/settings": "Settings",
+};
 
 /**
  * Layout for every signed-in page. The header (with the account menu on the
@@ -117,6 +139,10 @@ const endUserNav: NavItem[] = [
  */
 export function AppShell({ children, fullBleed = false }: { children: ReactNode; fullBleed?: boolean }) {
   const { role, collegeName } = useAuthStore();
+  const t = useT();
+  // Signed-in pages are private: give each a meaningful tab title and keep
+  // them out of search results.
+  usePageMeta({ title: PAGE_TITLES[useLocation().pathname] ?? "Workspace", noindex: true });
   const isAdmin = role === "admin";
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -227,7 +253,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
                     key={item.to}
                     to={item.to}
                     end
-                    aria-label={item.label}
+                    aria-label={t(item.labelKey)}
                     className={({ isActive }) =>
                       `flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-[var(--radius-control)] text-sm transition-colors ${
                         isActive
@@ -237,7 +263,7 @@ export function AppShell({ children, fullBleed = false }: { children: ReactNode;
                     }
                   >
                     {item.icon}
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="hidden sm:inline">{t(item.labelKey)}</span>
                   </NavLink>
                 ))}
               </nav>

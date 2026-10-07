@@ -14,6 +14,7 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminConflicts from "@/pages/AdminConflicts";
+import AdminInsights from "@/pages/AdminInsights";
 import AdminDocuments from "@/pages/AdminDocuments";
 import AdminLogins from "@/pages/AdminLogins";
 import AdminSettings from "@/pages/AdminSettings";
@@ -117,6 +118,14 @@ export default function App() {
           element={
             <RequireAuth role="admin">
               <AdminDocuments />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/insights"
+          element={
+            <RequireAuth role="admin">
+              <AdminInsights />
             </RequireAuth>
           }
         />

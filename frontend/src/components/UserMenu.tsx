@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/authStore";
-import { useThemeStore } from "@/lib/themeStore";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { api } from "@/lib/api";
 import { detachThisDevice } from "@/lib/pushClient";
 
@@ -24,7 +25,6 @@ function initials(name: string | null): string {
  */
 export function UserMenu() {
   const { role, fullName, collegeName, logout } = useAuthStore();
-  const { theme, toggle } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -65,7 +65,7 @@ export function UserMenu() {
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
       items[(index + step + items.length) % items.length]?.focus();
-    } else if (e.key === "Tab") {
+    } else if (e.key === "Tab" && !(e.target as HTMLElement).closest("[data-menu-controls]")) {
       setOpen(false);
     }
   };
@@ -127,23 +127,12 @@ export function UserMenu() {
             </svg>
             Profile
           </Link>
-          <button role="menuitem" onClick={toggle} className={itemClass}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-              {theme === "dark" ? (
-                <>
-                  <circle cx="12" cy="12" r="4.5" strokeWidth="1.6" />
-                  <path
-                    d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </>
-              ) : (
-                <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" strokeWidth="1.6" strokeLinejoin="round" />
-              )}
-            </svg>
-            {theme === "dark" ? "Light theme" : "Dark theme"}
-          </button>
+          <div className="border-t border-line my-1.5" />
+          {/* Appearance + language. Tab moves through these without closing the menu. */}
+          <div data-menu-controls className="px-3 py-2 flex items-center justify-between gap-2">
+            <ThemeToggle />
+            <LanguageSelector className="min-w-0" />
+          </div>
           <div className="border-t border-line my-1.5" />
           <button
             role="menuitem"

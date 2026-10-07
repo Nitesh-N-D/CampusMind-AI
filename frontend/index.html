@@ -2,85 +2,112 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f4ee" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
+
+    <!-- Icons and manifest -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta name="application-name" content="CampusMind AI" />
+    <meta name="apple-mobile-web-app-title" content="CampusMind AI" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f2f4fa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161c2f" media="(prefers-color-scheme: dark)" />
     <script>
       // Set the theme before first paint to avoid a flash of the wrong
       // theme. Mirrors the logic in src/lib/themeStore.ts.
       (function () {
         try {
           var stored = localStorage.getItem("cm_theme");
-          var theme =
-            stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = stored === "light" || stored === "dark" ? stored : dark ? "dark" : "light";
           document.documentElement.dataset.theme = theme;
         } catch (e) {}
       })();
     </script>
-    <title>CampusMind AI — Grounded AI Assistant for Your College</title>
+
+    <title>CampusMind AI — Your Intelligent Campus Assistant</title>
     <meta
       name="description"
-      content="CampusMind AI answers student questions from your college's own official documents — regulations, circulars, timetables, and notices — with page-level citations and a visible trust score. No hallucinated facts."
+      content="CampusMind AI is an intelligent campus assistant that helps students and faculty find academic information, announcements, events, deadlines and more."
     />
-    <meta name="robots" content="index, follow" />
-    <!--
-      Replace every "https://campusmind.ai" URL below with your actual
-      deployed domain (e.g. https://campusmind-mit.vercel.app) once you
-      deploy. Canonical/OG URLs pointing at an unowned domain are inert
-      until then and won't break local development.
-    -->
-    <link rel="canonical" href="https://campus-mind-ai-delta.vercel.app/" />
     <meta name="author" content="CampusMind AI" />
-    <meta name="keywords" content="college AI assistant, campus chatbot, RAG for education, student assistant, academic regulations chatbot, college knowledge base, campus copilot" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <meta
+      name="keywords"
+      content="campus assistant, college AI assistant, campus chatbot, RAG for education, student assistant, academic regulations chatbot, college knowledge base"
+    />
+    <link rel="canonical" href="https://campus-mind-ai-delta.vercel.app/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="CampusMind AI" />
-    <meta property="og:title" content="CampusMind AI — Grounded AI Assistant for Your College" />
+    <meta property="og:title" content="CampusMind AI — Your Intelligent Campus Assistant" />
     <meta
       property="og:description"
-      content="Answers your college can stand behind. Page-level citations, visible trust scores, and conflict detection across every official document."
+      content="CampusMind AI is an intelligent campus assistant that helps students and faculty find academic information, announcements, events, deadlines and more."
     />
-    <meta property="og:image" content="https://campus-mind-ai-delta.vercel.app/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://campus-mind-ai-delta.vercel.app/" />
     <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://campus-mind-ai-delta.vercel.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="CampusMind AI logo and the tagline: Answers your college can stand behind."
+    />
 
-    <!-- Twitter -->
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CampusMind AI — Grounded AI Assistant for Your College" />
+    <meta name="twitter:title" content="CampusMind AI — Your Intelligent Campus Assistant" />
     <meta
       name="twitter:description"
-      content="Answers your college can stand behind. Page-level citations, visible trust scores, and conflict detection across every official document."
+      content="CampusMind AI is an intelligent campus assistant that helps students and faculty find academic information, announcements, events, deadlines and more."
     />
     <meta name="twitter:image" content="https://campus-mind-ai-delta.vercel.app/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="CampusMind AI logo and the tagline: Answers your college can stand behind."
+    />
 
-    <!--
-      Google Search Console verification:
-      Once this app is deployed to its real domain, add your own verification
-      tag here, e.g.
-      <meta name="google-site-verification" content="YOUR_CODE_HERE" />
-      Get the code from https://search.google.com/search-console after
-      adding your deployed domain as a property. A placeholder code cannot
-      verify ownership, so this is left for you to fill in after deployment.
-    -->
+    <!-- Search Console ownership verification for the deployed domain. -->
     <meta name="google-site-verification" content="YXgHaWG73coxaS5DpK4mv0k3diVmxVfPGNPO98YCbvI" />
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "CampusMind AI",
-        "applicationCategory": "EducationalApplication",
-        "operatingSystem": "Web",
-        "description": "AI-powered smart college assistant that answers student questions from official college documents with citations and trust scoring.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        }
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://campus-mind-ai-delta.vercel.app/#organization",
+            "name": "CampusMind AI",
+            "url": "https://campus-mind-ai-delta.vercel.app/",
+            "logo": "https://campus-mind-ai-delta.vercel.app/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://campus-mind-ai-delta.vercel.app/#website",
+            "name": "CampusMind AI",
+            "url": "https://campus-mind-ai-delta.vercel.app/",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://campus-mind-ai-delta.vercel.app/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "CampusMind AI",
+            "url": "https://campus-mind-ai-delta.vercel.app/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "description": "An intelligent campus assistant that helps students and faculty find academic information, announcements, events, deadlines and more.",
+            "publisher": { "@id": "https://campus-mind-ai-delta.vercel.app/#organization" }
+          }
+        ]
       }
     </script>
   </head>

@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/lib/usePageMeta";
 import { useState, type SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -6,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/lib/authStore";
 
 export default function Login() {
+  usePageMeta({ title: "Sign in", noindex: true, path: "/login" });
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const [email, setEmail] = useState("");

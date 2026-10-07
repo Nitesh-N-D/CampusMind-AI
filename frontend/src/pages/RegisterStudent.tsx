@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/lib/usePageMeta";
 import { useState, type SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -8,6 +9,11 @@ import { useAuthStore } from "@/lib/authStore";
 type Role = "student" | "faculty";
 
 export default function RegisterStudent() {
+  usePageMeta({
+    title: "Create your student account",
+    description: "Create a CampusMind AI account with your college email to ask questions about academic information, announcements, events and deadlines.",
+    path: "/register",
+  });
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const [role, setRole] = useState<Role>("student");

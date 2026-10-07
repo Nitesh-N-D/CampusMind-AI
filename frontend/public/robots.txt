@@ -1,8 +1,12 @@
+# Robots rules are a courtesy for crawlers, not access control: every
+# signed-in route is protected by authentication on the API.
 User-agent: *
 Allow: /
-Disallow: /chat
 Disallow: /admin
+Disallow: /chat
 Disallow: /profile
-Disallow: /documents
+Disallow: /notifications
+Disallow: /reminders
+Disallow: /login
 
 Sitemap: https://campus-mind-ai-delta.vercel.app/sitemap.xml

@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/lib/usePageMeta";
 import { useState, type SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -6,6 +7,11 @@ import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/lib/authStore";
 
 export default function RegisterCollege() {
+  usePageMeta({
+    title: "Set up your college workspace",
+    description: "Register your college on CampusMind AI and upload official documents so students and faculty can find answers with citations.",
+    path: "/register-college",
+  });
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const [form, setForm] = useState({

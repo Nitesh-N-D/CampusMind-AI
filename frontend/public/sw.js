@@ -34,7 +34,8 @@ self.addEventListener("push", (event) => {
   // notification replace each other instead of stacking.
   const show = self.registration.showNotification(p.title, {
     body: p.body,
-    icon: "/favicon.svg",
+    // PNG: several platforms ignore SVG notification icons.
+    icon: "/icon-192.png",
     tag: p.id !== null ? "cm-" + p.id : undefined,
     data: { url: p.url },
   });

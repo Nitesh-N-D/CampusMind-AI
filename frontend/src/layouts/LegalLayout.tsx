@@ -1,9 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
+import { usePageMeta } from "@/lib/usePageMeta";
 import { Wordmark } from "@/components/Brand";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function LegalLayout({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
+  const { pathname } = useLocation();
+  usePageMeta({ title, path: pathname });
   return (
     <div className="min-h-screen bg-paper-100">
       <header className="border-b border-line bg-surface sticky top-0 z-20">

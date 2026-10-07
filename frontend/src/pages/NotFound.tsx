@@ -1,8 +1,10 @@
+import { usePageMeta } from "@/lib/usePageMeta";
 import { Link } from "react-router-dom";
 import { Wordmark } from "@/components/Brand";
 import { Button } from "@/components/ui";
 
 export default function NotFound() {
+  usePageMeta({ title: "Page not found", noindex: true, noCanonical: true });
   return (
     <div className="min-h-screen bg-paper-100 flex flex-col items-center justify-center px-6 text-center">
       <Wordmark className="mb-8" />

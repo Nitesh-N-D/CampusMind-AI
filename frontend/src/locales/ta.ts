@@ -9,7 +9,6 @@ export const ta: Partial<Record<MessageKey, string>> = {
   "theme.label": "வண்ணத் தீம்",
   "theme.light": "வெளிச்சம்",
   "theme.dark": "இருண்டது",
-  "theme.system": "சாதனம்",
   "lang.label": "இடைமுக மொழி",
 
   "chat.newChat": "புதிய உரையாடல்",

@@ -251,7 +251,7 @@ Status labels: IMPLEMENTED = code written; TESTED = automated tests run; DEPLOYE
 | Extended admin analytics (college-scoped) | yes | yes (backend) | no | no |
 | Query-language handling and localized abstain messages | yes | yes (backend) | no | no |
 | UI languages: English, Tamil, Hindi (partial, falls back to English) | yes | build/typecheck only | no | no |
-| Light/Dark/System theme, redesigned tokens | yes | build/typecheck only | no | no |
+| Light/Dark theme, redesigned tokens | yes | build/typecheck only | no | no |
 | Collapsible chat sidebar, search, delete, quick actions, copy, feedback reasons | yes | build/typecheck only | no | no |
 | Notification "Ask CampusMind" (prefills chat, does not auto-send) | yes | build/typecheck only | no | no |
 | Reminder scheduler script | yes | yes (backend) | no | no |

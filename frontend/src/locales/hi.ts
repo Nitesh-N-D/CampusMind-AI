@@ -9,7 +9,6 @@ export const hi: Partial<Record<MessageKey, string>> = {
   "theme.label": "रंग थीम",
   "theme.light": "हल्का",
   "theme.dark": "गहरा",
-  "theme.system": "सिस्टम",
   "lang.label": "इंटरफ़ेस भाषा",
 
   "chat.newChat": "नई बातचीत",

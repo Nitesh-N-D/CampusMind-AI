@@ -1,8 +1,6 @@
 import { create } from "zustand";
 
 export type Theme = "light" | "dark";
-/** What the user picked. "system" follows the OS and updates live. */
-export type ThemePreference = Theme | "system";
 
 const STORAGE_KEY = "cm_theme";
 const QUERY = "(prefers-color-scheme: dark)";
@@ -11,18 +9,19 @@ function systemPrefersDark(): boolean {
   return window.matchMedia?.(QUERY).matches ?? false;
 }
 
-function readPreference(): ThemePreference {
+/**
+ * The saved choice, or the OS setting on a first visit. The OS setting is only
+ * a starting point: once the user picks a theme it stays until they change it.
+ * (An old saved "system" value is treated as unset.)
+ */
+function readTheme(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system") return stored;
+    if (stored === "light" || stored === "dark") return stored;
   } catch {
-    // Storage blocked (private mode): fall through to following the system.
+    // Storage blocked (private mode): fall through to the OS setting.
   }
-  return "system";
-}
-
-function resolve(preference: ThemePreference): Theme {
-  return preference === "system" ? (systemPrefersDark() ? "dark" : "light") : preference;
+  return systemPrefersDark() ? "dark" : "light";
 }
 
 function applyTheme(theme: Theme) {
@@ -30,48 +29,34 @@ function applyTheme(theme: Theme) {
 }
 
 interface ThemeState {
-  /** The theme actually showing right now. */
   theme: Theme;
-  preference: ThemePreference;
   hydrate: () => void;
-  /** Quick flip between light and dark (sets an explicit preference). */
+  /** Quick flip between light and dark. */
   toggle: () => void;
-  setPreference: (preference: ThemePreference) => void;
+  setTheme: (theme: Theme) => void;
 }
 
-const initialPreference = readPreference();
-
 export const useThemeStore = create<ThemeState>((set, get) => {
-  const commit = (preference: ThemePreference) => {
+  const commit = (theme: Theme) => {
     try {
-      localStorage.setItem(STORAGE_KEY, preference);
+      localStorage.setItem(STORAGE_KEY, theme);
     } catch {
       // Not persisted, still applied for this session.
     }
-    const theme = resolve(preference);
     applyTheme(theme);
-    set({ preference, theme });
+    set({ theme });
   };
 
   return {
-    preference: initialPreference,
-    theme: resolve(initialPreference),
+    theme: readTheme(),
 
     hydrate: () => {
-      const preference = readPreference();
-      const theme = resolve(preference);
+      const theme = readTheme();
       applyTheme(theme);
-      set({ preference, theme });
-      // Follow OS changes while the user is on "system".
-      window.matchMedia?.(QUERY).addEventListener("change", () => {
-        if (get().preference !== "system") return;
-        const next = resolve("system");
-        applyTheme(next);
-        set({ theme: next });
-      });
+      set({ theme });
     },
 
-    setPreference: commit,
+    setTheme: commit,
     toggle: () => commit(get().theme === "dark" ? "light" : "dark"),
   };
 });

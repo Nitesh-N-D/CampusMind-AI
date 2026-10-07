@@ -7,7 +7,6 @@ export const en = {
   "theme.label": "Colour theme",
   "theme.light": "Light",
   "theme.dark": "Dark",
-  "theme.system": "System",
   "lang.label": "Interface language",
 
   "chat.newChat": "New conversation",

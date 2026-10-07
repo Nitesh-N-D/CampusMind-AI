@@ -36,7 +36,7 @@ without touching code or infrastructure.
 | Feature | What it does |
 |---|---|
 | **Account menu** | One avatar menu in the top-right of every signed-in page for profile, theme, and sign-out. |
-| **Light / Dark / System theme** | A three-way theme switch on every page, remembered per browser; follows the OS setting by default. |
+| **Light / Dark theme** | A two-way theme switch on every page, remembered per browser; the first visit starts from the OS setting. |
 | **English, Tamil, Hindi UI** | A language selector for the interface (partial translations fall back to English). |
 | **Admin insights** | Unanswered-question tracking with admin resolve/link, answer-feedback reasons, and college-scoped analytics. |
 | **Installable app and branding** | Web manifest, favicons, app icons, Open Graph/Twitter cards, `robots.txt`, `sitemap.xml`, JSON-LD, and per-route titles; private pages and the 404 are `noindex`. |

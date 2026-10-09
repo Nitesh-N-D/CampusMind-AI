@@ -27,17 +27,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    # Lets the browser read the server-chosen filename on file downloads.
-    expose_headers=["Content-Disposition"],
-)
-
-
 @app.middleware("http")
 async def request_logging_and_id(request: Request, call_next):
     """Attaches a short request_id to every request/response, and logs
@@ -57,7 +46,14 @@ async def request_logging_and_id(request: Request, call_next):
             request.url.path,
             duration_ms,
         )
-        raise
+        # Answered here, inside the CORS middleware, so the browser can read
+        # the error. Starlette's own last-resort handler sits outside CORS and
+        # its 500s reach the browser as an opaque "blocked by CORS".
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Something went wrong on our end. Please try again.", "request_id": request_id},
+            headers={"X-Request-ID": request_id},
+        )
     duration_ms = round((time.perf_counter() - start) * 1000, 1)
     log = logger.warning if response.status_code >= 500 else logger.info
     log(
@@ -70,6 +66,19 @@ async def request_logging_and_id(request: Request, call_next):
     )
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+# Added after the middleware above so CORS is the outermost layer and every
+# response from inside it, errors included, gets the CORS headers.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    # Lets the browser read the server-chosen filename on file downloads.
+    expose_headers=["Content-Disposition"],
+)
 
 
 def _first_readable_message(errors: list) -> str:

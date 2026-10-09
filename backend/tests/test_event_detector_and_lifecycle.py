@@ -10,6 +10,7 @@ import io
 
 import pytest
 
+from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.db import models
@@ -96,13 +97,14 @@ def test_failed_processing_cleans_up_storage_and_leaves_no_notification(client, 
 
     monkeypatch.setattr(document_upload, "process_document", boom)
     monkeypatch.setattr(document_upload.storage_service, "delete_stored", lambda p, k: deleted.append((p, k)))
-    # The error propagates (a 500 in production); what matters is the cleanup.
-    with pytest.raises(RuntimeError):
-        client.post(
-            "/api/notifications",
-            headers=_auth(admin_token),
-            data={"title": "T", "body": "B", "category": "circular", "audience": "both"},
-            files={"file": ("n.png", _png(), "image/png")},
-        )
+    # The crash becomes a plain 500 (with CORS headers, see test_cors.py); what
+    # matters here is the cleanup.
+    resp = TestClient(app, raise_server_exceptions=False).post(
+        "/api/notifications",
+        headers=_auth(admin_token),
+        data={"title": "T", "body": "B", "category": "circular", "audience": "both"},
+        files={"file": ("n.png", _png(), "image/png")},
+    )
+    assert resp.status_code == 500 and "extraction exploded" not in resp.text
     assert deleted, "stored file should be cleaned up when ingestion crashes"
     assert client.get("/api/notifications", headers=_auth(admin_token)).json() == []

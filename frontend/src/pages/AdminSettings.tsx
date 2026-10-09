@@ -127,7 +127,7 @@ export default function AdminSettings() {
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-ink-400">
+              <p className="text-xs text-ink-500">
                 Changing or clearing the domain only affects new signups. Existing faculty accounts keep working.
               </p>
             </form>

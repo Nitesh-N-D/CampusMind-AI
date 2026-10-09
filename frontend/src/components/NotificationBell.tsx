@@ -8,7 +8,7 @@ export function NotificationBell() {
     <Link
       to="/notifications"
       aria-label={label}
-      className="relative w-9 h-9 flex items-center justify-center rounded-[var(--radius-control)] text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
+      className="relative w-10 h-10 flex items-center justify-center rounded-[var(--radius-control)] text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
     >
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
         <path
@@ -19,7 +19,7 @@ export function NotificationBell() {
         />
       </svg>
       {unread > 0 && (
-        <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full bg-seal-coral-600 text-white text-[10px] leading-4 font-medium text-center">
+        <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-[var(--radius-chip)] bg-lamp text-on-lamp text-[10px] leading-4 font-bold text-center">
           {unread > 99 ? "99+" : unread}
         </span>
       )}

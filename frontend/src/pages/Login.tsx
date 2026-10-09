@@ -37,11 +37,11 @@ export default function Login() {
       footer={
         <>
           New to CampusMind AI?{" "}
-          <Link to="/register" className="text-violet-600 font-medium hover:underline">
+          <Link to="/register" className="text-violet-600 font-semibold underline underline-offset-4">
             Create a student account
           </Link>{" "}
           or{" "}
-          <Link to="/register-college" className="text-violet-600 font-medium hover:underline">
+          <Link to="/register-college" className="text-violet-600 font-semibold underline underline-offset-4">
             set up your college
           </Link>
         </>

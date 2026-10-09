@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "@/layouts/AppShell";
-import { Button, Card, ErrorBanner, Input, PageHeader, Select, Skeleton } from "@/components/ui";
+import { Button, ErrorBanner, Input, PageHeader, Select, Skeleton } from "@/components/ui";
 import { api, ApiError, type Profile as ProfileType } from "@/lib/api";
 
 const LANGUAGES = [
@@ -25,6 +25,33 @@ function validateNickname(nickname: string): string | null {
     return "Nickname can only contain letters, numbers, spaces, - _ and .";
   }
   return null;
+}
+
+function ProfileSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section aria-label={title} className="border-t border-line-strong pt-4">
+      <h2 className="flex items-center gap-2.5 text-xl font-bold text-ink-950 mb-4">
+        <span aria-hidden="true" className="w-2.5 h-2.5 rotate-45 bg-lamp outline outline-1 outline-ink-950 shrink-0" />
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function SavedMark({ show }: { show: boolean }) {
+  return (
+    <span role="status" className="text-sm font-semibold text-ink-950 inline-flex items-center gap-1.5 min-h-5">
+      {show && (
+        <>
+          <span aria-hidden="true" className="text-[10px] bg-lamp text-on-lamp px-1 rounded-[var(--radius-chip)]">
+            ◆
+          </span>
+          Saved
+        </>
+      )}
+    </span>
+  );
 }
 
 export default function Profile() {
@@ -142,7 +169,7 @@ export default function Profile() {
         </div>
         <div className="grid gap-6 max-w-2xl">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="bg-surface border border-line rounded-[var(--radius-card)] p-6">
+            <div key={i} className="border-t border-line-strong pt-5">
               <Skeleton className="h-4 w-32 mb-5" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Skeleton className="h-11 w-full" />
@@ -176,7 +203,7 @@ export default function Profile() {
       <Button onClick={save} disabled={saving}>
         {saving ? "Saving..." : "Save changes"}
       </Button>
-      {saved && <span className="text-sm text-seal-teal-700">Saved</span>}
+      <SavedMark show={saved} />
     </div>
   );
 
@@ -199,9 +226,22 @@ export default function Profile() {
       )}
 
       {profile && (
-        <div className="grid gap-6 max-w-2xl">
-          <Card className="p-6">
-            <h2 className="font-medium text-ink-900 mb-4">Identity</h2>
+        <div className="grid grid-cols-1 gap-10 max-w-2xl">
+          <div className="flex items-center gap-4">
+            <span
+              aria-hidden="true"
+              className="w-14 h-14 shrink-0 flex items-center justify-center bg-lamp text-on-lamp text-xl font-bold rounded-[var(--radius-card)] border-[1.5px] border-ink-950"
+            >
+              {(profile.nickname || profile.full_name || "?").trim().charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xl font-bold text-ink-950 truncate">{profile.full_name}</p>
+              <p className="data text-ink-500 truncate">
+                {profile.role} · {profile.email}
+              </p>
+            </div>
+          </div>
+          <ProfileSection title="Identity">
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
@@ -224,20 +264,18 @@ export default function Profile() {
               <Button onClick={saveIdentity} disabled={savingIdentity}>
                 {savingIdentity ? "Saving..." : "Save identity"}
               </Button>
-              {identitySaved && <span className="text-sm text-seal-teal-700">Saved</span>}
+              <SavedMark show={identitySaved} />
             </div>
-          </Card>
+          </ProfileSection>
 
           {isAdmin ? (
-            <Card className="p-6">
-              <h2 className="font-medium text-ink-900 mb-4">Preferences</h2>
+            <ProfileSection title="Preferences">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{languageSelect}</div>
               {saveRow}
-            </Card>
+            </ProfileSection>
           ) : (
             <>
-            <Card className="p-6">
-              <h2 className="font-medium text-ink-900 mb-4">Academic context</h2>
+            <ProfileSection title="Academic context">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Department"
@@ -294,18 +332,17 @@ export default function Profile() {
                 />
               </div>
               {saveRow}
-            </Card>
+            </ProfileSection>
 
-            <Card className="p-6">
-              <h2 className="font-medium text-ink-900 mb-1.5">Privacy</h2>
-              <p className="text-sm text-ink-500 mb-4">
+            <ProfileSection title="Privacy">
+              <p className="text-sm text-ink-700 mb-4">
                 You're always in control of your personalization data. Clearing it won't delete your
                 account, conversation history, or name.
               </p>
               <Button variant="danger" onClick={clearPersonalization}>
                 Clear academic context
               </Button>
-            </Card>
+            </ProfileSection>
             </>
           )}
         </div>

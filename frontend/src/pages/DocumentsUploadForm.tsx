@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
-import { Badge, Button, Card, ErrorBanner, Input, Select, Spinner } from "@/components/ui";
+import { Badge, Button, ErrorBanner, Input, Select, Spinner } from "@/components/ui";
 import { api, ApiError, type DocumentOut } from "@/lib/api";
 import { toastSuccess } from "@/lib/toastStore";
 
@@ -191,7 +191,12 @@ export function UploadForm({
   const clearCompleted = () => setQueue((prev) => prev.filter((f) => f.status !== "done"));
 
   return (
-    <Card className="p-6 mb-8">
+    <section
+      className="border-[1.5px] border-ink-950 rounded-[var(--radius-card)] bg-surface p-5 sm:p-6 mb-10 shadow-[6px_6px_0_var(--color-lamp)]"
+      aria-label="Upload documents"
+    >
+      <p className="label-caps">Add to the knowledge base</p>
+      <h2 className="text-2xl font-bold text-ink-950 mt-1 mb-4">Upload documents</h2>
       {error && (
         <div className="mb-4">
           <ErrorBanner message={error} />
@@ -206,15 +211,27 @@ export function UploadForm({
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Choose files to upload, or drag them here"
         className={`flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
-          dragOver ? "border-violet-500 bg-violet-50" : "border-line-strong hover:border-violet-500"
+          dragOver ? "border-ink-950 bg-violet-50" : "border-line-strong hover:border-ink-950"
         }`}
       >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-ink-400" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-ink-700" aria-hidden="true">
           <path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <p className="text-sm font-medium text-ink-800">Drag files here, or click to browse</p>
-        <p className="text-xs text-ink-400 max-w-md">
+        <p className="text-sm font-semibold text-ink-900">Drag files here</p>
+        <span className="inline-flex items-center min-h-11 px-4 border-[1.5px] border-ink-950 rounded-[var(--radius-control)] text-sm font-semibold text-ink-950 bg-surface">
+          Choose files
+        </span>
+        <p className="text-xs text-ink-700 max-w-md">
           PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, text (.txt), or images (.jpg, .jpeg, .png, .webp), up to {MAX_UPLOAD_MB}MB each.
           Images and scanned PDFs are read with text recognition.
         </p>
@@ -239,7 +256,7 @@ export function UploadForm({
               <div className="flex items-center gap-3">
                 <div className="shrink-0">
                   {f.status === "queued" && <Badge tone="neutral">Queued</Badge>}
-                  {f.status === "uploading" && <Spinner className="text-violet-500" />}
+                  {f.status === "uploading" && <Spinner className="text-ink-950" />}
                   {f.status === "done" && <Badge tone="teal">Indexed</Badge>}
                   {f.status === "failed" && <Badge tone="coral">Failed</Badge>}
                 </div>
@@ -248,23 +265,22 @@ export function UploadForm({
                   onChange={(e) => updateTitle(f.id, e.target.value)}
                   disabled={!isPending(f) || uploading}
                   aria-label={`Title for ${f.file.name}`}
-                  className="flex-1 min-w-0 h-9 text-sm text-ink-900 border border-line-strong rounded-[var(--radius-control)] px-2.5 bg-surface disabled:opacity-60"
+                  className="flex-1 min-w-0 min-h-11 text-sm text-ink-900 border border-line-strong rounded-[var(--radius-control)] px-2.5 bg-surface outline-none focus:border-ink-950 disabled:opacity-60"
                 />
                 <span className="shrink-0" title={`Detected type: ${f.kind}`}>
                   <Badge tone="violet">{f.kind}</Badge>
                 </span>
-                <span className="text-xs text-ink-400 shrink-0 hidden sm:inline">
+                <span className="data text-ink-500 shrink-0 hidden sm:inline">
                   {(f.file.size / 1024 / 1024).toFixed(1)}MB
                 </span>
                 {isPending(f) && !uploading && (
                   <button
+                    type="button"
                     aria-label={`Remove ${f.file.name}`}
                     onClick={() => removeFromQueue(f.id)}
-                    className="shrink-0 text-ink-400 hover:text-seal-coral-600"
+                    className="shrink-0 min-h-11 px-2 text-xs font-semibold text-ink-700 underline underline-offset-4 hover:text-seal-coral-700"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                      <path d="M6 6l12 12M18 6 6 18" strokeWidth="1.8" strokeLinecap="round" />
-                    </svg>
+                    Remove
                   </button>
                 )}
               </div>
@@ -316,8 +332,8 @@ export function UploadForm({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-6">
-        <span className="text-xs text-ink-400">
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-5 border-t border-line">
+        <span className="text-xs text-ink-500">
           {pendingCount > 0 ? `${pendingCount} file${pendingCount === 1 ? "" : "s"} ready to upload` : ""}
         </span>
         <div className="flex gap-2">
@@ -335,6 +351,6 @@ export function UploadForm({
           </Button>
         </div>
       </div>
-    </Card>
+    </section>
   );
 }

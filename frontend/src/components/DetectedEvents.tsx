@@ -106,7 +106,7 @@ export function DetectedEvents({ doc }: { doc: DocumentOut }) {
       </button>
       {open && (
         <div className="mt-2">
-          <p className="text-xs text-ink-400 mb-1">
+          <p className="text-xs text-ink-500 mb-1">
             Found automatically in this document. Review each one - nothing is sent until you publish it.
           </p>
           <ul>

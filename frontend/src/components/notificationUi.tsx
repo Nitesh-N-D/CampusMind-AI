@@ -44,20 +44,10 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   general: "General",
 };
 
-const CATEGORY_TONES: Record<NotificationCategory, "neutral" | "teal" | "amber" | "coral" | "violet"> = {
-  circular: "violet",
-  announcement: "violet",
-  holiday: "teal",
-  deadline: "coral",
-  examination: "amber",
-  assignment: "amber",
-  event: "teal",
-  academic: "neutral",
-  general: "neutral",
-};
-
+/** Category is a plain label: kind of notice is information, not an alarm. Colour is
+ * reserved for urgency (priority and due date), which are the things that need action. */
 export function CategoryBadge({ category }: { category: NotificationCategory }) {
-  return <Badge tone={CATEGORY_TONES[category] ?? "neutral"}>{CATEGORY_LABELS[category] ?? category}</Badge>;
+  return <Badge tone="neutral">{CATEGORY_LABELS[category] ?? category}</Badge>;
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {

@@ -1,84 +1,93 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 @theme {
-  /* CampusMind AI design tokens.
-     One source of truth: every component reads these through Tailwind
-     utilities (bg-surface, text-ink-700, border-line ...), and the dark theme
-     below re-points the same names, so no component carries theme-specific
-     colours. Cool neutral ramp + one cobalt accent; teal/amber/coral are
-     reserved strictly for trust-tier meaning. */
+  /* CampusMind design tokens ("Thread").
+     One source of truth: components read these through Tailwind utilities
+     (bg-surface, text-ink-700, border-line ...) and the dark theme re-points
+     the same names, so no component carries theme-specific colours.
+
+     Identity lives in shape, structure and behaviour (diagonal corners, the
+     provenance thread, pointer tags, trust steps, supersession lanes), not in
+     a hue. Neutrals are cool graphite-green; one citron "lamp" marks what is
+     current / selected / active. Teal / amber / coral exist only to carry
+     trust-tier meaning, and every use of them is paired with text or shape. */
 
   /* Text ramp (950 strongest -> 300 faintest) */
-  --color-ink-950: #0b1020;
-  --color-ink-900: #131a2e;
-  --color-ink-800: #232c45;
-  --color-ink-700: #36405d;
-  --color-ink-500: #566180;
-  --color-ink-400: #7482a3;
-  --color-ink-300: #a3aec6;
+  --color-ink-950: #0d1310;
+  --color-ink-900: #151d18;
+  --color-ink-800: #243029;
+  --color-ink-700: #394840;
+  --color-ink-500: #55645a;
+  --color-ink-400: #6c7b71;
+  --color-ink-300: #9aa89f;
 
-  /* Brand fills. 900 = the admin rail, 700/600/500 = primary actions. */
-  --color-navy-900: #0f1830;
-  --color-navy-700: #2a3a95;
-  --color-navy-600: #3547b0;
-  --color-navy-500: #4659c9;
+  /* Solid fills. navy-700 = primary actions and the user's own question. */
+  --color-navy-900: #0a0f0c;
+  --color-navy-700: #16211b;
+  --color-navy-600: #26362d;
+  --color-navy-500: #384d41;
 
-  /* Layers: paper-100 app background -> surface cards -> surface-2 insets. */
-  --color-paper-50: #f9fafd;
-  --color-paper-100: #f2f4fa;
-  --color-paper-200: #e8ecf5;
-  --color-paper-300: #d7deec;
+  /* Layers: paper-100 page -> surface panels -> surface-2 insets. */
+  --color-paper-50: #f7f8f5;
+  --color-paper-100: #e9ede8;
+  --color-paper-200: #dde2db;
+  --color-paper-300: #cbd2c9;
 
-  --color-line: #e0e5f0;
-  --color-line-strong: #c8d0e3;
+  --color-line: #cdd4cb;
+  --color-line-strong: #9ba69d;
 
-  --color-surface: #ffffff;
-  --color-surface-2: #f7f8fc;
-  --color-surface-hover: #edf0f8;
+  --color-surface: #f8f9f6;
+  --color-surface-2: #eff2ed;
+  --color-surface-hover: #e3e8e1;
 
-  /* Text on brand fills (rail, primary buttons, user bubbles). Constant
-     across themes because those fills stay saturated. */
-  --color-on-navy: #f8f9ff;
-  --color-on-navy-muted: #c3c9e2;
-  /* Wordmark colour on page backgrounds; flips with the theme. */
-  --color-brand-ink: #1b2a6b;
+  --color-on-navy: #eef3ec;
+  --color-on-navy-muted: #b4c0b7;
+  --color-brand-ink: #0d1310;
 
-  /* Accent: links, focus, selected states. */
-  --color-violet-600: #3445c4;
-  --color-violet-500: #5565e6;
-  --color-violet-100: #e1e6fd;
-  --color-violet-50: #eff2fe;
+  /* The lamp: "this is current / selected / yours". Always carries dark text. */
+  --color-lamp: #d7f23c;
+  --color-on-lamp: #0d1310;
+  --color-focus: #0d1310;
+
+  /* Accent roles (kept as violet-* names for the existing call sites):
+     600 = accent text, 500 = accent line / border, 100 / 50 = soft marks. */
+  --color-violet-600: #3d5200;
+  --color-violet-500: #5f7d00;
+  --color-violet-100: #e4f2a6;
+  --color-violet-50: #eef6c9;
 
   --color-seal-teal-900: #0d3d2e;
   --color-seal-teal-700: #14573f;
   --color-seal-teal-600: #1f7a5c;
-  --color-seal-teal-100: #dcf0e6;
-  --color-seal-teal-50: #eef8f2;
+  --color-seal-teal-100: #d3ece0;
+  --color-seal-teal-50: #e7f4ed;
 
   --color-seal-amber-900: #5c3a0d;
   --color-seal-amber-700: #855215;
   --color-seal-amber-600: #c97d2e;
-  --color-seal-amber-100: #faecd7;
-  --color-seal-amber-50: #fdf6ea;
+  --color-seal-amber-100: #f6e4c8;
+  --color-seal-amber-50: #fbf1de;
 
   --color-seal-coral-900: #5c1712;
   --color-seal-coral-700: #86241c;
   --color-seal-coral-600: #c1443b;
-  --color-seal-coral-100: #f9dedb;
-  --color-seal-coral-50: #fcefed;
+  --color-seal-coral-100: #f5d6d2;
+  --color-seal-coral-50: #fbebe9;
 
-  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Restrained corners: panels 6px, controls 5px. Structure comes from
-     borders and dividers, not from floating shadowed cards. */
-  --radius-card: 6px;
-  --radius-control: 5px;
+  /* The CampusMind corner: top-left and bottom-right are rounded, the other
+     two nearly square. Used by every panel and control through these two
+     tokens, so the whole product shares one silhouette. */
+  --radius-card: 18px 3px 18px 3px;
+  --radius-control: 11px 2px 11px 2px;
+  --radius-chip: 7px 1px 7px 1px;
 
   --shadow-card: none;
-  --shadow-raised: 0 8px 24px rgba(15, 24, 60, 0.12);
+  --shadow-raised: 0 10px 28px rgba(10, 15, 12, 0.16);
 }
 
 html {
@@ -86,42 +95,46 @@ html {
 }
 
 /*
-  Dark theme: layered slate-navy, deliberately not near-black. Background,
-  surface and raised surface each step ~6% lighter so cards read as elevated
-  without glowing borders. Text stays well above WCAG AA on every layer.
+  Dark theme: deep graphite-green, never pure black. Panels step lighter
+  layer by layer, and the lamp stays the single bright mark. Primary fills
+  flip to pale so they stand out from the dark surfaces.
 */
 [data-theme="dark"] {
-  --color-paper-50: #1b2236;
-  --color-paper-100: #161c2f;
-  --color-paper-200: #263050;
-  --color-paper-300: #333e60;
+  --color-paper-50: #1a211d;
+  --color-paper-100: #0e1310;
+  --color-paper-200: #1d2520;
+  --color-paper-300: #2c372f;
 
-  --color-line: #2f3957;
-  --color-line-strong: #434f75;
+  --color-line: #28322c;
+  --color-line-strong: #425048;
 
-  --color-surface: #1e2640;
-  --color-surface-2: #242d4a;
-  --color-surface-hover: #2b3556;
+  --color-surface: #151b17;
+  --color-surface-2: #1b231e;
+  --color-surface-hover: #232d27;
 
-  --color-ink-950: #f4f6fc;
-  --color-ink-900: #e7eaf6;
-  --color-ink-800: #ccd2e6;
-  --color-ink-700: #aeb7d1;
-  --color-ink-500: #96a0bf;
-  --color-ink-400: #7f8aac;
-  --color-ink-300: #5d6888;
+  --color-ink-950: #f0f4ee;
+  --color-ink-900: #e3e9e1;
+  --color-ink-800: #ccd4ca;
+  --color-ink-700: #b0bbb1;
+  --color-ink-500: #94a297;
+  --color-ink-400: #7c8a80;
+  --color-ink-300: #5b685f;
 
-  /* Brighter fills so primary buttons and bubbles stand out from dark
-     surfaces. navy-900 (the admin rail) is a touch deeper than the page. */
-  --color-navy-900: #111830;
-  --color-navy-700: #4254d6;
-  --color-navy-600: #5062e2;
-  --color-navy-500: #6577ec;
+  --color-navy-900: #090c0a;
+  --color-navy-700: #e3ecdc;
+  --color-navy-600: #f1f6ec;
+  --color-navy-500: #ffffff;
 
-  --color-brand-ink: #f4f6fc;
+  --color-on-navy: #0d1310;
+  --color-on-navy-muted: #3c4a41;
+  --color-brand-ink: #f0f4ee;
+  --color-focus: #d7f23c;
 
-  /* Lighter tints keep trust-tier and accent *text* readable (AA) on dark
-     surfaces. The -600 fills are unchanged and always carry white text. */
+  --color-violet-600: #d7f23c;
+  --color-violet-500: #c3dd2e;
+  --color-violet-100: #d7f23c33;
+  --color-violet-50: #d7f23c14;
+
   --color-seal-teal-900: #a6e6c7;
   --color-seal-teal-700: #7fd4ab;
   --color-seal-teal-100: #1f7a5c55;
@@ -131,17 +144,12 @@ html {
   --color-seal-coral-900: #f8bab3;
   --color-seal-coral-700: #f2958b;
   --color-seal-coral-100: #c1443b55;
-  --color-violet-600: #aab4ff;
-  --color-violet-500: #8794ff;
 
   --color-seal-teal-50: #0d3d2e33;
   --color-seal-amber-50: #5c3a0d33;
   --color-seal-coral-50: #5c171233;
-  --color-violet-50: #5565e61f;
-  --color-violet-100: #5565e638;
 
-  --shadow-card: none;
-  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 10px 28px rgba(0, 0, 0, 0.45);
 
   color-scheme: dark;
 }
@@ -157,16 +165,19 @@ body {
 h1,
 h2,
 h3 {
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 ::selection {
-  background: var(--color-violet-100);
-  color: var(--color-ink-950);
+  background: var(--color-lamp);
+  color: var(--color-on-lamp);
 }
 
+/* Focus is a high-contrast ink ring (lamp in dark mode) with a lamp halo, so
+   it reads on every surface in both themes. */
 :focus-visible {
-  outline: 2px solid var(--color-violet-500);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -184,26 +195,101 @@ h3 {
   border: 2px solid var(--color-paper-100);
 }
 
-/* Solid brand fill for primary actions and the user's own chat message.
-   Flat on purpose: no gradient. */
+/* Solid fill for primary actions and the user's own question. */
 .bg-brand {
   background-color: var(--color-navy-700);
 }
 
-/* Soft hero wash behind the chat empty state / landing, never behind text
-   blocks that need contrast. */
-.bg-hero-wash {
-  background-image: radial-gradient(60% 80% at 50% 0%, var(--color-violet-50), transparent 70%);
+/* Label voice: small, semibold, sentence case. Names a thing; never shouts. */
+.label-caps {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-ink-500);
 }
 
-/* Editorial labels: small mono caps used for section labels, metadata keys
-   and status tags. The product's "official record" voice. */
-.label-caps {
+/* Data voice: dates, versions, pages, counts. Monospace, tabular. */
+.data {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-500);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Long-form legal copy: comfortable measure, diamond-marked section heads. */
+.legal-prose {
+  max-width: 68ch;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--color-ink-800);
+}
+.legal-prose h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-ink-950);
+}
+.legal-prose h2::before {
+  content: "";
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  transform: rotate(45deg);
+  background: var(--color-lamp);
+  outline: 1px solid var(--color-ink-950);
+}
+.legal-prose strong {
+  color: var(--color-ink-950);
+}
+.legal-prose li::marker {
+  color: var(--color-ink-950);
+}
+
+/* The pointer tag: the active-navigation shape. A lamp-filled tag whose right
+   edge points toward the content it controls. */
+.pointer-tag {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+  background: var(--color-lamp);
+  color: var(--color-on-lamp);
+}
+
+/* The thread: a 2px vertical spine joining the parts of one answer. */
+.thread {
+  position: relative;
+}
+.thread::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: repeating-linear-gradient(to bottom, var(--color-line-strong) 0 6px, transparent 6px 10px);
+}
+/* For lists of nodes: the line stops at the last node. */
+.thread.thread-list::before {
+  bottom: 2rem;
+}
+.thread-node {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lamp underline: marks the one current thing in a row of options. */
+.lamp-under {
+  box-shadow: inset 0 -3px 0 var(--color-lamp);
+}
+[data-theme="light"] .lamp-under,
+:root:not([data-theme="dark"]) .lamp-under {
+  box-shadow: inset 0 -3px 0 var(--color-ink-950);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -215,10 +301,11 @@ h3 {
   }
 }
 
+/* Motion language: things arrive along the thread, from above, quickly. */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
@@ -226,6 +313,31 @@ h3 {
   }
 }
 
+@keyframes draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes step-in {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
 .animate-rise {
-  animation: fadeIn 0.28s ease-out both;
+  animation: fadeIn 0.22s ease-out both;
+}
+
+.animate-step {
+  transform-origin: bottom;
+  animation: step-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

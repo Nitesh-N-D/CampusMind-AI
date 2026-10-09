@@ -69,24 +69,25 @@ export default function RegisterStudent() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="text-violet-600 font-medium hover:underline">
+          <Link to="/login" className="text-violet-600 font-semibold underline underline-offset-4">
             Sign in
           </Link>{" "}
           or{" "}
-          <Link to="/register-college" className="text-violet-600 font-medium hover:underline">
+          <Link to="/register-college" className="text-violet-600 font-semibold underline underline-offset-4">
             set up your college
           </Link>
         </>
       }
     >
-      <div className="flex gap-1 bg-paper-200 p-1 rounded-[var(--radius-control)] mb-6">
+      <div role="group" aria-label="I am a" className="flex border-b border-line-strong mb-6">
         {(["student", "faculty"] as Role[]).map((r) => (
           <button
             key={r}
             type="button"
             onClick={() => setRole(r)}
-            className={`flex-1 py-2 text-sm rounded-[6px] capitalize transition-colors ${
-              role === r ? "bg-surface text-ink-950 font-medium shadow-sm" : "text-ink-500"
+            aria-pressed={role === r}
+            className={`flex-1 min-h-11 text-sm capitalize transition-colors ${
+              role === r ? "lamp-under font-bold text-ink-950" : "text-ink-700 hover:text-ink-950"
             }`}
           >
             {r}
@@ -177,13 +178,13 @@ export default function RegisterStudent() {
           {loading && <Spinner />}
           {loading ? "Creating account..." : "Create account"}
         </Button>
-        <p className="text-xs text-ink-400 text-center -mt-1">
+        <p className="text-xs text-ink-500 text-center -mt-1">
           By creating an account you agree to the{" "}
-          <Link to="/terms" className="text-violet-600 hover:underline">
+          <Link to="/terms" className="text-violet-600 underline underline-offset-4">
             Terms
           </Link>{" "}
           and{" "}
-          <Link to="/privacy" className="text-violet-600 hover:underline">
+          <Link to="/privacy" className="text-violet-600 underline underline-offset-4">
             Privacy Policy
           </Link>
           .

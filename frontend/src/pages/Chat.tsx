@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
-import { Seal, type TrustLevel } from "@/components/Seal";
-import { MarkIcon } from "@/components/Brand";
+import type { TrustLevel } from "@/components/Seal";
+import type { DocStatus } from "@/components/campus";
+import { AnswerBlock, QuestionLine, trustFromConfidence } from "@/components/AnswerBlock";
 import { Button, ErrorBanner, Spinner } from "@/components/ui";
 import {
   api,
@@ -58,6 +59,15 @@ const QUICK_ACTIONS: { key: MessageKey; query: string }[] = [
 const FEEDBACK_REASONS: FeedbackReason[] = ["incorrect", "missing", "poor_citation", "outdated", "other"];
 const SIDEBAR_KEY = "cm_chat_sidebar";
 const LOW_CONFIDENCE = 40;
+
+// Backend document status -> the shared StatusTag vocabulary.
+const CITATION_STATUS: Record<string, DocStatus> = {
+  ready: "current",
+  processing: "processing",
+  uploaded: "processing",
+  failed: "failed",
+  archived: "archived",
+};
 
 interface LocalMessage {
   id: number;
@@ -279,7 +289,7 @@ export default function Chat() {
             }}
             aria-label={t("chat.newChat")}
             title={t("chat.newChat")}
-            className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-control)] bg-brand text-on-navy hover:brightness-110"
+            className="w-11 h-11 flex items-center justify-center rounded-[var(--radius-control)] bg-brand text-on-navy shadow-[inset_0_-3px_0_var(--color-lamp)]"
           >
             {plusIcon}
           </button>
@@ -352,7 +362,7 @@ export default function Chat() {
                   <div
                     key={s.id}
                     className={`group flex items-center rounded-[var(--radius-control)] ${
-                      activeSession === s.id ? "bg-violet-50" : "hover:bg-surface-hover"
+                      activeSession === s.id ? "bg-violet-50 shadow-[inset_3px_0_0_var(--color-lamp)]" : "hover:bg-surface-hover"
                     }`}
                   >
                     <button
@@ -439,7 +449,7 @@ export default function Chat() {
                 <button
                   aria-label={t("chat.closeHistory")}
                   onClick={() => setHistoryOpen(false)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full text-ink-700 hover:bg-surface-hover"
+                  className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-control)] text-ink-700 hover:bg-surface-hover"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path d="M6 6l12 12M18 6 6 18" strokeWidth="1.8" strokeLinecap="round" />
@@ -500,17 +510,18 @@ export default function Chat() {
           </div>
 
           <div className="flex-1 overflow-y-auto" aria-live="polite">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-7">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
               {messages.length === 0 && (
                 <div className="pt-4 sm:pt-10">
-                  <h2 className="font-display text-2xl sm:text-3xl text-ink-950">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-ink-950 leading-tight">
                     {isAdmin
                       ? "Spot-check your knowledge base"
                       : fullName
                       ? t("chat.greeting", { name: fullName.split(" ")[0] })
                       : t("chat.greetingAnon")}
                   </h2>
-                  <p className="text-sm text-ink-500 mt-2 max-w-xl">
+                  <span aria-hidden="true" className="block h-1.5 w-14 bg-lamp mt-3 rounded-[var(--radius-chip)]" />
+                  <p className="text-sm sm:text-base text-ink-500 mt-3 max-w-xl">
                     {isAdmin
                       ? "This assistant is built for your students and faculty. Ask a test question to confirm an upload is retrieved and cited correctly - admin test questions aren't counted in usage analytics."
                       : t("chat.intro", { college: collegeName ?? t("chat.introFallbackCollege") })}
@@ -524,7 +535,7 @@ export default function Chat() {
                             key={a.key}
                             onClick={() => send(a.query)}
                             disabled={sending}
-                            className="text-sm bg-surface hover:bg-violet-50 border border-line hover:border-violet-500 text-ink-800 px-3.5 h-10 rounded-[var(--radius-control)] transition-colors disabled:opacity-50"
+                            className="text-sm font-medium bg-surface hover:bg-lamp hover:text-on-lamp border-[1.5px] border-ink-950 text-ink-900 px-3.5 min-h-11 rounded-[var(--radius-control)] transition-colors disabled:opacity-50"
                           >
                             {t(a.key)}
                           </button>
@@ -532,16 +543,23 @@ export default function Chat() {
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-8">
-                    {suggestions.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => send(s)}
-                        className="text-left text-sm bg-surface hover:bg-surface-hover border border-line hover:border-line-strong px-4 py-3 rounded-[var(--radius-control)] transition-colors text-ink-800"
-                      >
-                        {s}
-                      </button>
-                    ))}
+                  <div className="mt-8">
+                    <p className="label-caps border-b border-line-strong pb-1.5">Try asking</p>
+                    <ul className="divide-y divide-line">
+                      {suggestions.map((s) => (
+                        <li key={s}>
+                          <button
+                            onClick={() => send(s)}
+                            className="group w-full flex items-center justify-between gap-4 text-left text-[15px] min-h-12 py-2.5 text-ink-900 hover:text-ink-950"
+                          >
+                            <span className="group-hover:underline decoration-2 decoration-lamp underline-offset-4">{s}</span>
+                            <span aria-hidden="true" className="text-ink-500 group-hover:text-ink-950 group-hover:translate-x-0.5 transition-transform">
+                              →
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               )}
@@ -560,7 +578,7 @@ export default function Chat() {
                 e.preventDefault();
                 send(input);
               }}
-              className="max-w-3xl mx-auto flex items-end gap-2 bg-surface border border-line-strong focus-within:border-violet-500 rounded-[var(--radius-card)] p-2 transition-colors"
+              className="max-w-3xl mx-auto flex items-end gap-2 bg-surface border-[1.5px] border-ink-950 rounded-[var(--radius-card)] p-2 transition-shadow"
             >
               <label htmlFor="chat-input" className="sr-only">
                 {t("chat.askLabel")}
@@ -586,7 +604,7 @@ export default function Chat() {
                   onClick={() => (voice.listening ? voice.stop() : voice.start())}
                   aria-label={voice.listening ? "Stop voice input" : "Start voice input"}
                   aria-pressed={voice.listening}
-                  className={`h-10 px-3 shrink-0 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] border border-line transition-colors ${
+                  className={`min-h-11 px-3 shrink-0 flex items-center gap-1.5 text-xs font-semibold rounded-[var(--radius-control)] border border-line-strong transition-colors ${
                     voice.listening
                       ? "bg-seal-coral-600 text-white animate-pulse"
                       : "text-ink-500 hover:text-ink-900 hover:bg-surface-hover"
@@ -602,7 +620,7 @@ export default function Chat() {
               <button
                 type="submit"
                 disabled={sending || !input.trim()}
-                className="h-10 px-4 shrink-0 flex items-center gap-2 text-sm font-medium rounded-[var(--radius-control)] bg-brand text-on-navy hover:bg-navy-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="min-h-11 px-4 shrink-0 flex items-center gap-2 text-sm font-semibold rounded-[var(--radius-control)] bg-brand text-on-navy hover:bg-navy-600 shadow-[inset_0_-3px_0_var(--color-lamp)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {sending ? (
                   <Spinner className="w-4 h-4" />
@@ -643,6 +661,9 @@ function groupSessions(sessions: ChatSessionOut[]): { label: string; items: Chat
   return groups.filter((g) => g.items.length > 0);
 }
 
+const actionBtn =
+  "min-h-10 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-line-strong text-xs font-semibold text-ink-800 hover:bg-surface-hover hover:text-ink-950 transition-colors";
+
 function MessageBubble({
   message,
   onFeedback,
@@ -666,174 +687,115 @@ function MessageBubble({
   };
 
   if (message.role === "user") {
+    return <QuestionLine>{message.content}</QuestionLine>;
+  }
+
+  if (message.pending) {
     return (
-      <div className="flex justify-end">
-        <div className="bg-brand text-on-navy rounded-[var(--radius-card)] px-4 py-2.5 text-sm max-w-[85%] sm:max-w-[75%] whitespace-pre-wrap break-words">
-          {message.content}
-        </div>
+      <div className="flex items-center gap-3 text-ink-700 text-sm" role="status">
+        <span className="thread-node">
+          <Spinner className="w-4 h-4" />
+        </span>
+        {t("chat.checking")}
       </div>
     );
   }
 
   const lowConfidence =
     !message.abstained && typeof message.confidence === "number" && message.confidence < LOW_CONFIDENCE;
+  const rated = !message.abstained && typeof message.confidence === "number";
+  const noEvidence = !!message.abstained || (!message.citations || message.citations.length === 0);
 
   return (
-    <div className="flex gap-3">
-      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-[var(--radius-control)] border border-line bg-surface flex items-center justify-center">
-        <MarkIcon size={18} />
-      </div>
-      <div className="min-w-0 flex-1">
-        {message.pending ? (
-          <div className="flex items-center gap-2 text-ink-500 text-sm py-1" role="status">
-            <Spinner className="w-4 h-4" />
-            {t("chat.checking")}
-          </div>
-        ) : (
+    <AnswerBlock
+      answer={message.content}
+      trust={trustFromConfidence(message.confidence, message.abstained || (noEvidence && !rated))}
+      score={message.confidence}
+      note={lowConfidence ? t("chat.lowConfidence") : undefined}
+      conflicts={message.hasConflict ? message.conflicts : undefined}
+      sourcesLabel={t("chat.sources")}
+      sources={(message.citations ?? []).map((c) => ({
+        title: c.document_title,
+        page: c.page,
+        section: c.section,
+        department: c.department,
+        version: c.version,
+        date: c.effective_date,
+        status: c.status ? CITATION_STATUS[c.status] : undefined,
+        trustScore: c.trust_score,
+        trustLevel: ((c.trust_level as TrustLevel) || "medium") as TrustLevel,
+      }))}
+    >
+      <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+        <button onClick={copy} aria-label={t("chat.copy")} title={copied ? t("chat.copied") : t("chat.copy")} className={actionBtn}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth="1.6" />
+            <path d="M5 15V6a2 2 0 0 1 2-2h8" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <span role="status">{copied ? t("chat.copied") : t("chat.copy")}</span>
+        </button>
+        {rated && (
           <>
-            <div className="text-[15px] text-ink-900 leading-relaxed whitespace-pre-wrap break-words">
-              {message.content}
-            </div>
-
-            {lowConfidence && (
-              <p className="mt-3 text-xs text-seal-amber-900 border-l-2 border-seal-amber-600 bg-seal-amber-50 px-3 py-2">
-                {t("chat.lowConfidence")}
-              </p>
-            )}
-
-            {message.hasConflict && message.conflicts && message.conflicts.length > 0 && (
-              <div className="mt-4 space-y-3">
-                {message.conflicts.map((c, i) => (
-                  <div key={i} className="border border-seal-amber-600/40 rounded-[var(--radius-card)] overflow-hidden">
-                    <p className="label-caps !text-seal-amber-900 bg-seal-amber-50 px-3 py-2 border-b border-seal-amber-600/30">
-                      {t("chat.conflictTitle", { topic: c.topic })}
-                    </p>
-                    <div className="grid sm:grid-cols-2 sm:divide-x divide-y sm:divide-y-0 divide-line">
-                      <div className="px-3 py-2.5">
-                        <p className="label-caps">A</p>
-                        <p className="text-sm text-ink-900 mt-1 break-words">{c.value_a}</p>
-                      </div>
-                      <div className="px-3 py-2.5">
-                        <p className="label-caps">B</p>
-                        <p className="text-sm text-ink-900 mt-1 break-words">{c.value_b}</p>
-                      </div>
-                    </div>
-                    {c.reasoning && <p className="text-xs text-ink-700 px-3 py-2 border-t border-line">{c.reasoning}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {message.citations && message.citations.length > 0 && (
-              <div className="mt-4 border-t border-line pt-3">
-                <p className="label-caps mb-1">{t("chat.sources")}</p>
-                <ol className="divide-y divide-line">
-                  {message.citations.map((c, i) => (
-                    <li key={i} className="flex items-center gap-3 py-2">
-                      <span className="font-mono text-xs text-ink-500 w-5 shrink-0">[{i + 1}]</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-800 truncate">{c.document_title}</p>
-                        <p className="text-xs text-ink-500 truncate font-mono">
-                          {c.page ? `Page ${c.page}` : c.section || "Source"}
-                          {c.department ? ` - ${c.department}` : ""}
-                        </p>
-                      </div>
-                      <Seal score={c.trust_score} level={(c.trust_level as TrustLevel) || "medium"} size="sm" />
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              {!message.abstained && typeof message.confidence === "number" && (
-                <span className="text-[11px] text-ink-500" style={{ fontFamily: "var(--font-mono)" }}>
-                  {t("chat.confidence", { value: Math.round(message.confidence) })}
-                </span>
-              )}
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={copy}
-                  aria-label={t("chat.copy")}
-                  title={copied ? t("chat.copied") : t("chat.copy")}
-                  className="h-9 px-2.5 flex items-center gap-1.5 rounded-[var(--radius-control)] text-ink-600 hover:text-ink-950 hover:bg-surface-hover text-xs"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth="1.6" />
-                    <path d="M5 15V6a2 2 0 0 1 2-2h8" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                  <span role="status">{copied ? t("chat.copied") : t("chat.copy")}</span>
-                </button>
-                {!message.abstained && typeof message.confidence === "number" && (
-                  <>
-                    <button
-                      aria-label={t("chat.helpful")}
-                      title={t("chat.helpful")}
-                      aria-pressed={feedbackGiven === "up"}
-                      onClick={() => {
-                        onFeedback(message.id, "up");
-                        setFeedbackGiven("up");
-                        setAskReason(false);
-                      }}
-                      className={`h-9 px-2.5 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] transition-colors hover:bg-surface-hover ${
-                        feedbackGiven === "up" ? "text-seal-teal-700 font-medium" : "text-ink-600 hover:text-ink-950"
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M7 22V11l5-9 1.5 1L12 11h8l-2 11H9l-2-1Z" strokeWidth="1.6" strokeLinejoin="round" />
-                      </svg>
-                      {t("chat.helpful")}
-                    </button>
-                    <button
-                      aria-label={t("chat.notHelpful")}
-                      title={t("chat.notHelpful")}
-                      aria-pressed={feedbackGiven === "down"}
-                      onClick={() => {
-                        onFeedback(message.id, "down");
-                        setFeedbackGiven("down");
-                        setAskReason(true);
-                      }}
-                      className={`h-9 px-2.5 flex items-center gap-1.5 text-xs rounded-[var(--radius-control)] transition-colors hover:bg-surface-hover ${
-                        feedbackGiven === "down" ? "text-seal-coral-700 font-medium" : "text-ink-600 hover:text-ink-950"
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                        <path d="M17 2v11l-5 9-1.5-1L12 13H4l2-11h11l2 1Z" strokeWidth="1.6" strokeLinejoin="round" />
-                      </svg>
-                      {t("chat.notHelpful")}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {askReason && (
-              <div className="mt-2" role="group" aria-label={t("chat.feedbackWhy")}>
-                <p className="text-xs text-ink-500 mb-1.5">{t("chat.feedbackWhy")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {FEEDBACK_REASONS.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        onFeedback(message.id, "down", r);
-                        setAskReason(false);
-                      }}
-                      className="text-xs px-3 h-9 rounded-[var(--radius-control)] border border-line bg-surface hover:border-violet-500 hover:bg-violet-50 text-ink-800"
-                    >
-                      {t(`reason.${r}` as MessageKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {feedbackGiven && !askReason && (
-              <p className="mt-2 text-xs text-ink-500" role="status">
-                {t("chat.feedbackThanks")}
-              </p>
-            )}
+            <button
+              aria-label={t("chat.helpful")}
+              title={t("chat.helpful")}
+              aria-pressed={feedbackGiven === "up"}
+              onClick={() => {
+                onFeedback(message.id, "up");
+                setFeedbackGiven("up");
+                setAskReason(false);
+              }}
+              className={`${actionBtn} ${feedbackGiven === "up" ? "!bg-lamp !text-on-lamp !border-ink-950" : ""}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M7 22V11l5-9 1.5 1L12 11h8l-2 11H9l-2-1Z" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              {t("chat.helpful")}
+            </button>
+            <button
+              aria-label={t("chat.notHelpful")}
+              title={t("chat.notHelpful")}
+              aria-pressed={feedbackGiven === "down"}
+              onClick={() => {
+                onFeedback(message.id, "down");
+                setFeedbackGiven("down");
+                setAskReason(true);
+              }}
+              className={`${actionBtn} ${feedbackGiven === "down" ? "!bg-seal-coral-100 !text-seal-coral-900 !border-seal-coral-600" : ""}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M17 2v11l-5 9-1.5-1L12 13H4l2-11h11l2 1Z" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              {t("chat.notHelpful")}
+            </button>
           </>
         )}
       </div>
-    </div>
+
+      {askReason && (
+        <div className="mt-3" role="group" aria-label={t("chat.feedbackWhy")}>
+          <p className="text-xs font-semibold text-ink-700 mb-1.5">{t("chat.feedbackWhy")}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {FEEDBACK_REASONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => {
+                  onFeedback(message.id, "down", r);
+                  setAskReason(false);
+                }}
+                className="text-xs font-medium px-3 min-h-10 rounded-[var(--radius-control)] border border-line-strong bg-surface hover:bg-lamp hover:text-on-lamp hover:border-ink-950 text-ink-800"
+              >
+                {t(`reason.${r}` as MessageKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {feedbackGiven && !askReason && (
+        <p className="mt-2 text-xs text-ink-500" role="status">
+          {t("chat.feedbackThanks")}
+        </p>
+      )}
+    </AnswerBlock>
   );
 }

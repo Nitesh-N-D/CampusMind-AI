@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
+import { DateStamp } from "@/components/campus";
 import { Badge, Button, EmptyState, ErrorBanner, PageHeader, SkeletonList } from "@/components/ui";
 import {
   AskCampusMindButton,
@@ -9,6 +10,7 @@ import {
   CategoryBadge,
   DueBadge,
   PriorityBadge,
+  daysUntil,
   formatWhen,
 } from "@/components/notificationUi";
 import { api, ApiError, type NotificationOut } from "@/lib/api";
@@ -79,19 +81,15 @@ export default function Notifications() {
       />
 
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div
-          role="tablist"
-          aria-label="Filter notifications"
-          className="inline-flex border border-line-strong rounded-[var(--radius-control)] overflow-hidden"
-        >
+        <div role="tablist" aria-label="Filter notifications" className="flex border-b border-line-strong">
           {(["all", "unread", "read"] as Filter[]).map((f) => (
             <button
               key={f}
               role="tab"
               aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className={`min-h-10 px-4 text-sm capitalize border-r border-line-strong last:border-r-0 transition-colors ${
-                filter === f ? "bg-violet-50 text-violet-600 font-medium" : "text-ink-700 hover:bg-surface-hover"
+              className={`min-h-11 px-4 text-sm capitalize transition-colors ${
+                filter === f ? "lamp-under font-bold text-ink-950" : "text-ink-700 hover:text-ink-950"
               }`}
             >
               {f}
@@ -129,42 +127,59 @@ export default function Notifications() {
       )}
 
       {shown.length > 0 && (
-        <ul className="border border-line rounded-[var(--radius-card)] bg-surface divide-y divide-line">
-          {shown.map((n) => (
-            <li
-              key={n.id}
-              className={`p-4 sm:p-5 border-l-4 ${n.is_read ? "border-l-transparent" : "border-l-violet-500"} ${
-                n.state === "expired" ? "opacity-70" : ""
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                {!n.is_read && <span className="label-caps !text-violet-600">New</span>}
-                <CategoryBadge category={n.category} />
-                <PriorityBadge priority={n.priority} />
-                <DueBadge n={n} />
-                {n.state === "expired" && <Badge>Expired</Badge>}
-                {n.verified && <Badge tone="teal">Official</Badge>}
-              </div>
-              <h3 className={`mt-2 text-ink-950 ${n.is_read ? "font-normal" : "font-semibold"}`}>{n.title}</h3>
-              <p className="text-sm text-ink-700 mt-1.5 whitespace-pre-line">{n.body}</p>
-              <p className="text-xs text-ink-500 mt-2.5 font-mono">
-                {n.circular_number ? `${n.circular_number} · ` : ""}
-                {n.department ? `${n.department} · ` : ""}
-                For {n.audience === "both" ? "students and faculty" : `${n.audience}s`} · {formatWhen(n.activity_at)}
-              </p>
-              <div className="mt-3 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-2">
-                <AttachmentButtons n={n} />
-                <div className="flex flex-wrap items-center gap-2">
-                  <AskCampusMindButton title={n.title} />
-                  {!n.is_read && (
-                    <Button variant="secondary" className="!py-1.5 !px-3" onClick={() => markRead(n)}>
-                      Mark as read
-                    </Button>
-                  )}
+        <ul className="border-t border-line-strong">
+          {shown.map((n) => {
+            const when = n.deadline ?? n.event_date;
+            const d = when ? daysUntil(when) : null;
+            const official = n.verified || n.category === "circular";
+            return (
+              <li
+                key={n.id}
+                className={`flex gap-4 py-5 pr-2 border-b border-line ${
+                  n.is_read ? "pl-4" : "pl-3 border-l-[5px] border-l-lamp"
+                } ${n.state === "expired" ? "opacity-70" : ""}`}
+              >
+                <DateStamp
+                  date={when ?? n.activity_at}
+                  state={d === null ? "later" : d < 0 ? "past" : d === 0 ? "today" : d <= 7 ? "soon" : "later"}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                    {official && <Badge tone="violet">Official notice</Badge>}
+                    {!n.is_read && <span className="label-caps !text-ink-950">New</span>}
+                    <CategoryBadge category={n.category} />
+                    <PriorityBadge priority={n.priority} />
+                    <DueBadge n={n} />
+                    {n.state === "expired" && <Badge>Expired</Badge>}
+                  </div>
+                  <h3
+                    className={`mt-2 text-ink-950 leading-snug ${
+                      official ? "text-xl" : "text-base"
+                    } ${n.is_read ? "font-medium" : "font-bold"}`}
+                  >
+                    {n.title}
+                  </h3>
+                  <p className="text-sm text-ink-700 mt-1.5 whitespace-pre-line">{n.body}</p>
+                  <p className="data text-ink-500 mt-2.5">
+                    {n.circular_number ? `${n.circular_number} · ` : ""}
+                    {n.department ? `${n.department} · ` : ""}
+                    For {n.audience === "both" ? "students and faculty" : `${n.audience}s`} · {formatWhen(n.activity_at)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <AttachmentButtons n={n} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AskCampusMindButton title={n.title} />
+                      {!n.is_read && (
+                        <Button variant="ghost" className="!py-1.5 !px-3 border border-line-strong" onClick={() => markRead(n)}>
+                          Mark as read
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </AppShell>

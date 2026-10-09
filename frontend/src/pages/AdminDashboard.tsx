@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
-import { Card, ErrorBanner, PageHeader, Skeleton, Badge } from "@/components/ui";
+import { ErrorBanner, PageHeader, Skeleton, Badge } from "@/components/ui";
+import { TrustMeter, type TrustLevel } from "@/components/Seal";
 import { api, ApiError, type Analytics, type KnowledgeHealth } from "@/lib/api";
 
 function scoreTone(score: number): "teal" | "amber" | "coral" {
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mb-10">
           <div className="bg-surface border border-line rounded-[var(--radius-card)] p-7 flex flex-col items-center justify-center gap-4">
-            <Skeleton className="w-36 h-36 rounded-full" />
+            <Skeleton className="w-36 h-36" />
             <Skeleton className="h-5 w-20" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -77,154 +78,172 @@ export default function AdminDashboard() {
   }
 
   const tone = scoreTone(health.health_score);
-  const metrics = [
-    { label: "Documents indexed", value: health.documents_indexed },
-    { label: "Verified", value: health.verified },
-    { label: "Outdated", value: health.outdated },
-    { label: "Conflicting", value: health.conflicting },
-    { label: "Unprocessed", value: health.unprocessed },
-    { label: "Low-confidence topics", value: health.low_confidence_topics },
-  ];
+  const toneText = tone === "teal" ? "Healthy" : tone === "amber" ? "Needs attention" : "Action required";
+  const healthLevel: TrustLevel =
+    health.health_score >= 85 ? "very_high" : health.health_score >= 70 ? "high" : health.health_score >= 45 ? "medium" : "low";
+  const attention: { to: string; label: string; count: number }[] = [
+    { to: "/admin/conflicts", label: "Documents in an unresolved conflict", count: health.conflicting },
+    { to: "/admin/documents", label: "Documents not yet processed", count: health.unprocessed },
+    { to: "/admin/documents", label: "Outdated documents", count: health.outdated },
+    { to: "/admin/insights", label: "Unanswered questions", count: analytics.unanswered_questions },
+  ].filter((a) => a.count > 0);
+  const helpful =
+    typeof analytics.feedback_helpful_ratio === "number"
+      ? `${Math.round(analytics.feedback_helpful_ratio * 100)}%`
+      : "-";
 
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Admin command center"
+        eyebrow="Admin"
         title="Knowledge base health"
-        description="A single score summarizing how verified, current, and conflict-free your college's document set is right now."
+        description="How verified, current and conflict-free your college's document set is right now."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mb-10">
-        <Card className="p-7 flex flex-col items-center justify-center text-center">
-          <div className="relative w-36 h-36">
-            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-paper-200)" strokeWidth="10" />
-              <circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke={
-                  tone === "teal"
-                    ? "var(--color-seal-teal-600)"
-                    : tone === "amber"
-                    ? "var(--color-seal-amber-600)"
-                    : "var(--color-seal-coral-600)"
-                }
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={`${(health.health_score / 100) * 2 * Math.PI * 52} ${2 * Math.PI * 52}`}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="font-display text-4xl text-ink-950">{Math.round(health.health_score)}</span>
-              <span className="text-xs text-ink-400">out of 100</span>
-            </div>
-          </div>
-          <Badge tone={tone}>
-            {tone === "teal" ? "Healthy" : tone === "amber" ? "Needs attention" : "Action required"}
-          </Badge>
-        </Card>
+      <section aria-labelledby="attention" className="mb-2">
+        <h2 id="attention" className="label-caps !text-ink-950 mb-2">
+          Needs attention
+        </h2>
+        {attention.length === 0 ? (
+          <p className="text-sm text-ink-700 border-l-[5px] border-l-lamp pl-3 py-1">Nothing needs action right now.</p>
+        ) : (
+          <ul className="border-t border-line-strong">
+            {attention.map((a) => (
+              <li key={a.label} className="border-b border-line">
+                <Link
+                  to={a.to}
+                  className="flex items-center gap-4 min-h-12 py-2 pr-1 hover:bg-surface-hover"
+                >
+                  <span className="data !text-2xl font-semibold text-ink-950 w-12 text-right">{a.count}</span>
+                  <span className="flex-1 text-sm font-medium text-ink-900">{a.label}</span>
+                  <span className="text-sm text-ink-700 shrink-0" aria-hidden="true">Review &rarr;</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {metrics.map((m) => (
-            <Card key={m.label} className="p-5">
-              <p className="text-xs text-ink-500">{m.label}</p>
-              <p className="font-display text-2xl text-ink-950 mt-1">{m.value}</p>
-            </Card>
-          ))}
+      <Group title="Campus knowledge" action={{ to: "/admin/documents", label: "Manage documents" }}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5">
+          <span className="text-5xl font-bold text-ink-950 leading-none">{Math.round(health.health_score)}</span>
+          <span className="data text-ink-500">/ 100</span>
+          <TrustMeter level={healthLevel} score={health.health_score} size="lg" showLabel showScore={false} />
+          <Badge tone={tone}>{toneText}</Badge>
         </div>
-      </div>
+        <Stats
+          rows={[
+            ["Documents indexed", health.documents_indexed],
+            ["Verified", health.verified],
+            ["Outdated", health.outdated],
+            ["Unprocessed", health.unprocessed],
+          ]}
+        />
+        <h3 className="label-caps mt-6 mb-2">Recent uploads</h3>
+        {analytics.recent_uploads.length === 0 ? (
+          <p className="text-sm text-ink-500">No documents uploaded yet.</p>
+        ) : (
+          <ul className="divide-y divide-line border-y border-line">
+            {analytics.recent_uploads.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="text-ink-800 truncate min-w-0">{d.title}</span>
+                <Badge tone={d.status === "ready" ? "teal" : d.status === "archived" ? "neutral" : "amber"}>
+                  {d.status}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Group>
 
-      {health.conflicting > 0 && (
-        <Link
-          to="/admin/conflicts"
-          className="flex items-center justify-between bg-seal-amber-50 border border-seal-amber-100 text-seal-amber-900 rounded-[var(--radius-card)] px-5 py-4 mb-10 hover:border-seal-amber-600 transition-colors"
-        >
-          <span className="text-sm font-medium">
-            {health.conflicting} document{health.conflicting === 1 ? "" : "s"} involved in an unresolved conflict
-          </span>
-          <span className="text-sm">Review &rarr;</span>
-        </Link>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h2 className="font-medium text-ink-900 mb-1">Usage, last 30 days</h2>
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div>
-              <p className="font-display text-2xl text-ink-950">{analytics.total_questions_answered}</p>
-              <p className="text-xs text-ink-500 mt-1">Questions answered</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl text-ink-950">{analytics.unanswered_questions}</p>
-              <p className="text-xs text-ink-500 mt-1">Unanswered</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl text-ink-950">{analytics.low_confidence_responses}</p>
-              <p className="text-xs text-ink-500 mt-1">Low confidence</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl text-ink-950">{analytics.active_users_30d}</p>
-              <p className="text-xs text-ink-500 mt-1">Active users</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl text-ink-950">
-                {typeof analytics.feedback_helpful_ratio === "number"
-                  ? `${Math.round(analytics.feedback_helpful_ratio * 100)}%`
-                  : "-"}
-              </p>
-              <p className="text-xs text-ink-500 mt-1">Rated helpful</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl text-ink-950">{analytics.reminders_pending}</p>
-              <p className="text-xs text-ink-500 mt-1">Reminders pending</p>
-            </div>
-          </div>
-          <Link to="/admin/insights" className="inline-block text-sm text-violet-600 hover:underline mt-4">
-            Review unanswered questions and feedback
-          </Link>
-          <h3 className="text-sm font-medium text-ink-800 mt-6 mb-3">Most asked</h3>
-          {analytics.top_queries.length === 0 ? (
-            <p className="text-sm text-ink-400">No questions logged yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {analytics.top_queries.map((q) => (
-                <li key={q.query} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-700 truncate min-w-0 pr-3">{q.query}</span>
-                  <span className="text-ink-400 shrink-0" style={{ fontFamily: "var(--font-mono)" }}>
-                    {q.count}x
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="font-medium text-ink-900 mb-4">Recent uploads</h2>
-          {analytics.recent_uploads.length === 0 ? (
-            <p className="text-sm text-ink-400">No documents uploaded yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {analytics.recent_uploads.map((d) => (
-                <li key={d.id} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-700 truncate min-w-0 pr-3">{d.title}</span>
-                  <Badge tone={d.status === "ready" ? "teal" : d.status === "archived" ? "neutral" : "amber"}>
-                    {d.status}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
+      <Group title="AI quality" action={{ to: "/admin/insights", label: "Review questions and feedback" }}>
+        <Stats
+          rows={[
+            ["Conflicting documents", health.conflicting],
+            ["Low-confidence topics", health.low_confidence_topics],
+            ["Unanswered questions", analytics.unanswered_questions],
+            ["Low-confidence answers", analytics.low_confidence_responses],
+            ["Rated helpful", helpful],
+          ]}
+        />
+        {health.conflicting > 0 && (
           <Link
-            to="/admin/documents"
-            className="inline-block mt-5 text-sm font-medium text-violet-600 hover:underline"
+            to="/admin/conflicts"
+            className="mt-4 flex items-center justify-between gap-3 border-l-[5px] border-seal-amber-600 bg-seal-amber-50 text-seal-amber-900 px-4 py-3 text-sm hover:bg-seal-amber-100"
           >
-            Manage all documents &rarr;
+            <span className="font-medium">
+              {health.conflicting} document{health.conflicting === 1 ? "" : "s"} in an unresolved conflict
+            </span>
+            <span className="shrink-0">Review conflicts &rarr;</span>
           </Link>
-        </Card>
-      </div>
+        )}
+      </Group>
+
+      <Group title="Campus activity (last 30 days)">
+        <Stats
+          rows={[
+            ["Questions answered", analytics.total_questions_answered],
+            ["Active users", analytics.active_users_30d],
+            ["Reminders pending", analytics.reminders_pending],
+          ]}
+        />
+        <h3 className="label-caps mt-6 mb-2">Most asked</h3>
+        {analytics.top_queries.length === 0 ? (
+          <p className="text-sm text-ink-500">No questions logged yet.</p>
+        ) : (
+          <ul className="divide-y divide-line border-y border-line">
+            {analytics.top_queries.map((q) => (
+              <li key={q.query} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="text-ink-800 truncate min-w-0">{q.query}</span>
+                <span className="data text-ink-500 shrink-0">{q.count}x</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Group>
     </AppShell>
+  );
+}
+
+function Group({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: { to: string; label: string };
+  children: ReactNode;
+}) {
+  return (
+    <section className="py-6 border-b border-line last:border-b-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="flex items-center gap-2.5 text-xl font-bold text-ink-950">
+          <span aria-hidden="true" className="w-2.5 h-2.5 rotate-45 bg-lamp outline outline-1 outline-ink-950 shrink-0" />
+          {title}
+        </h2>
+        {action && (
+          <Link
+            to={action.to}
+            className="inline-flex items-center min-h-11 px-3 border border-line-strong rounded-[var(--radius-control)] text-sm font-medium text-ink-900 hover:bg-surface-hover"
+          >
+            {action.label} &rarr;
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Stats({ rows }: { rows: [string, number | string][] }) {
+  return (
+    <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
+      {rows.map(([k, v]) => (
+        <div key={k} className="border-l-[3px] border-ink-950 pl-3">
+          <dt className="text-xs text-ink-500">{k}</dt>
+          <dd className="data !text-2xl font-semibold text-ink-950">{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

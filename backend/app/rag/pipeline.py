@@ -374,6 +374,9 @@ async def answer_question(
             "trust_level": r.document.trust_level.value if r.document.trust_level else None,
             "trust_score": r.trust_score,
             "department": r.document.department,
+            "version": r.document.version,
+            "effective_date": r.document.effective_date.isoformat() if r.document.effective_date else None,
+            "status": r.document.status.value if r.document.status else None,
         }
         for r in results
     ]

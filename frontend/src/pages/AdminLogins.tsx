@@ -118,7 +118,7 @@ export default function AdminLogins() {
             <div
               role="radiogroup"
               aria-labelledby="role-filter-label"
-              className="flex gap-1 bg-paper-200 p-1 rounded-[var(--radius-control)]"
+              className="flex border-b border-line-strong"
             >
               {ROLE_OPTIONS.map((opt) => (
                 <button
@@ -127,8 +127,8 @@ export default function AdminLogins() {
                   role="radio"
                   aria-checked={role === opt.value}
                   onClick={() => changeFilter(() => setRole(opt.value))}
-                  className={`flex-1 lg:flex-none px-3.5 h-9 text-sm rounded-[6px] transition-colors ${
-                    role === opt.value ? "bg-surface text-ink-950 font-medium shadow-sm" : "text-ink-500 hover:text-ink-900"
+                  className={`flex-1 lg:flex-none px-3.5 min-h-11 text-sm transition-colors ${
+                    role === opt.value ? "lamp-under font-bold text-ink-950" : "text-ink-700 hover:text-ink-950"
                   }`}
                 >
                   {opt.label}

@@ -1,138 +1,92 @@
-export type TrustLevel = "very_high" | "high" | "medium" | "low";
+/**
+ * Trust, shown as a four-step staircase plus a spoken label.
+ *
+ * Steps (not a ring or a bare percentage) so confidence reads at a glance,
+ * and the count of filled steps carries the meaning even without colour:
+ *   Verified 4 · High 3 · Moderate 2 · Low 1 · Insufficient evidence 0
+ * The numeric score stays available as small data beside the steps.
+ *
+ * (File and `Seal` export keep their historical names so call sites are
+ * unchanged; `TrustMeter` is the preferred name.)
+ */
+export type TrustLevel = "very_high" | "high" | "medium" | "low" | "none";
 
-const TIER: Record<
-  TrustLevel,
-  { ring: string; fill: string; text: string; label: string; bg: string }
-> = {
-  very_high: {
-    ring: "var(--color-seal-teal-600)",
-    fill: "var(--color-seal-teal-50)",
-    text: "var(--color-seal-teal-900)",
-    bg: "var(--color-seal-teal-100)",
-    label: "Verified",
-  },
-  high: {
-    ring: "var(--color-seal-teal-600)",
-    fill: "var(--color-seal-teal-50)",
-    text: "var(--color-seal-teal-900)",
-    bg: "var(--color-seal-teal-100)",
-    label: "High trust",
-  },
-  medium: {
-    ring: "var(--color-seal-amber-600)",
-    fill: "var(--color-seal-amber-50)",
-    text: "var(--color-seal-amber-900)",
-    bg: "var(--color-seal-amber-100)",
-    label: "Use with caution",
-  },
-  low: {
-    ring: "var(--color-seal-coral-600)",
-    fill: "var(--color-seal-coral-50)",
-    text: "var(--color-seal-coral-900)",
-    bg: "var(--color-seal-coral-100)",
-    label: "Unverified",
-  },
+const TIER: Record<TrustLevel, { steps: number; color: string; text: string; label: string }> = {
+  very_high: { steps: 4, color: "var(--color-seal-teal-600)", text: "var(--color-seal-teal-900)", label: "Verified" },
+  high: { steps: 3, color: "var(--color-seal-teal-600)", text: "var(--color-seal-teal-900)", label: "High" },
+  medium: { steps: 2, color: "var(--color-seal-amber-600)", text: "var(--color-seal-amber-900)", label: "Moderate" },
+  low: { steps: 1, color: "var(--color-seal-coral-600)", text: "var(--color-seal-coral-900)", label: "Low" },
+  none: { steps: 0, color: "var(--color-line-strong)", text: "var(--color-ink-700)", label: "Insufficient evidence" },
 };
 
 const SIZES = {
-  sm: { box: 36, stroke: 3, font: 10 },
-  md: { box: 52, stroke: 3.5, font: 13 },
-  lg: { box: 72, stroke: 4, font: 17 },
+  sm: { w: 5, gap: 2, h: [6, 10, 14, 18] },
+  md: { w: 7, gap: 3, h: [8, 14, 20, 26] },
+  lg: { w: 10, gap: 4, h: [12, 20, 28, 36] },
 };
 
-export function Seal({
+export function trustLabel(level: TrustLevel): string {
+  return (TIER[level] ?? TIER.medium).label;
+}
+
+export function TrustMeter({
   score,
   level,
   size = "md",
   showLabel = false,
+  showScore = true,
   className = "",
 }: {
-  score: number;
+  score?: number;
   level: TrustLevel;
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
+  showScore?: boolean;
   className?: string;
 }) {
   const tier = TIER[level] ?? TIER.medium;
   const dim = SIZES[size];
-  const r = dim.box / 2 - dim.stroke * 2;
-  const circumference = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(100, Math.round(score)));
-  const dash = (clamped / 100) * circumference;
-  const tickCount = 24;
+  const clamped = typeof score === "number" ? Math.max(0, Math.min(100, Math.round(score))) : null;
+  const width = dim.w * 4 + dim.gap * 3;
+  const description =
+    clamped !== null && level !== "none"
+      ? `Trust: ${tier.label}, score ${clamped} out of 100`
+      : `Trust: ${tier.label}`;
 
   return (
-    <div className={`inline-flex items-center gap-2 ${className}`}>
-      <div
-        className="relative shrink-0"
-        style={{ width: dim.box, height: dim.box }}
-        role="img"
-        aria-label={`Source confidence ${clamped} percent, ${tier.label}`}
-      >
-        <svg width={dim.box} height={dim.box} viewBox={`0 0 ${dim.box} ${dim.box}`}>
-          <title>{`Source confidence ${clamped}%`}</title>
-          {/* stamp ticks */}
-          {Array.from({ length: tickCount }).map((_, i) => {
-            const angle = (i / tickCount) * Math.PI * 2;
-            const inner = dim.box / 2 - dim.stroke * 0.9;
-            const outer = dim.box / 2 - dim.stroke * 2.1;
-            const x1 = dim.box / 2 + inner * Math.cos(angle);
-            const y1 = dim.box / 2 + inner * Math.sin(angle);
-            const x2 = dim.box / 2 + outer * Math.cos(angle);
-            const y2 = dim.box / 2 + outer * Math.sin(angle);
-            return (
-              <line
-                key={i}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke="var(--color-line)"
-                strokeWidth={1}
-              />
-            );
-          })}
-          <circle
-            cx={dim.box / 2}
-            cy={dim.box / 2}
-            r={r}
-            fill={tier.fill}
-            stroke="var(--color-line)"
-            strokeWidth={1}
+    <div className={`inline-flex items-end gap-2 ${className}`} role="img" aria-label={description} title={description}>
+      <svg width={width} height={dim.h[3]} viewBox={`0 0 ${width} ${dim.h[3]}`} aria-hidden="true" className="shrink-0">
+        {dim.h.map((h, i) => (
+          <rect
+            key={i}
+            x={i * (dim.w + dim.gap)}
+            y={dim.h[3] - h}
+            width={dim.w}
+            height={h}
+            rx={1}
+            fill={i < tier.steps ? tier.color : "none"}
+            stroke={i < tier.steps ? tier.color : "var(--color-line-strong)"}
+            strokeWidth={1.25}
+            className={i < tier.steps ? "animate-step" : undefined}
+            style={i < tier.steps ? { animationDelay: `${i * 60}ms` } : undefined}
           />
-          <circle
-            cx={dim.box / 2}
-            cy={dim.box / 2}
-            r={r}
-            fill="none"
-            stroke={tier.ring}
-            strokeWidth={dim.stroke}
-            strokeDasharray={`${dash} ${circumference - dash}`}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${dim.box / 2} ${dim.box / 2})`}
-            style={{ transition: "stroke-dasharray 0.5s ease" }}
-          />
-        </svg>
-        <div
-          className="absolute inset-0 flex items-center justify-center font-medium"
-          style={{ color: tier.text, fontFamily: "var(--font-mono)", fontSize: dim.font }}
-        >
-          {clamped}
-        </div>
-      </div>
-      {showLabel && (
-        <div className="flex flex-col leading-tight">
-          <span
-            className="text-xs font-medium px-1.5 py-0.5 rounded w-fit"
-            style={{ background: tier.bg, color: tier.text }}
-          >
-            {tier.label}
-          </span>
-          <span className="text-[11px] text-ink-400 mt-1" style={{ fontFamily: "var(--font-mono)" }}>
-            confidence {clamped}%
-          </span>
-        </div>
+        ))}
+      </svg>
+      {(showLabel || (showScore && clamped !== null && level !== "none")) && (
+        <span className="flex flex-col leading-tight">
+          {showLabel && (
+            <span className="text-xs font-semibold" style={{ color: tier.text }}>
+              {tier.label}
+            </span>
+          )}
+          {showScore && clamped !== null && level !== "none" && (
+            <span className="data text-ink-500">{clamped}/100</span>
+          )}
+        </span>
       )}
     </div>
   );
 }
+
+/** Historical name for TrustMeter. */
+export const Seal = TrustMeter;

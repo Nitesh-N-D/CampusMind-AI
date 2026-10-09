@@ -320,6 +320,10 @@ export interface Citation {
   trust_level: string | null;
   trust_score: number;
   department: string | null;
+  // Absent on answers saved before these were recorded.
+  version?: number | null;
+  effective_date?: string | null;
+  status?: string | null;
 }
 
 export interface ConflictInfo {

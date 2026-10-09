@@ -133,15 +133,17 @@ frontend/src/
   layouts/                   AppShell, AuthLayout, LegalLayout
   components/                Seal (trust badge), UserMenu, ThemeToggle,
                              ToastContainer, RouteGuards, Brand, ui,
-                             ChatExportDialog
+                             ChatExportDialog, campus (provenance
+                             primitives), AnswerBlock
   lib/                       api.ts (axios client), authStore.ts,
                              themeStore.ts, toastStore.ts
   hooks/useVoiceInput.ts     Web Speech API wrapper
   index.css                  Design system: CSS custom properties,
-                             navy/paper/violet palette, dark overrides
+                             Thread tokens (ink/navy/paper/lamp), light,
+                             dark and system themes; see DESIGN_SYSTEM.md
 
 docs/                        ARCHITECTURE.md, SETUP.md, DEPLOYMENT.md,
-                             SECURITY.md, PROJECT_ROADMAP.md, this file
+                             SECURITY.md, PROJECT_ROADMAP.md, DESIGN_SYSTEM.md, this file
 CLAUDE.md                    Working rules for Claude Code in this repo
 ```
 
@@ -251,7 +253,7 @@ Status labels: IMPLEMENTED = code written; TESTED = automated tests run; DEPLOYE
 | Extended admin analytics (college-scoped) | yes | yes (backend) | no | no |
 | Query-language handling and localized abstain messages | yes | yes (backend) | no | no |
 | UI languages: English, Tamil, Hindi (partial, falls back to English) | yes | build/typecheck only | no | no |
-| Light/Dark theme, redesigned tokens | yes | build/typecheck only | no | no |
+| Thread design system, Light/Dark/System themes (`docs/DESIGN_SYSTEM.md`) | yes | build/typecheck and scripted Edge checks | no | no |
 | Collapsible chat sidebar, search, delete, quick actions, copy, feedback reasons | yes | build/typecheck only | no | no |
 | Notification "Ask CampusMind" (prefills chat, does not auto-send) | yes | build/typecheck only | no | no |
 | Reminder scheduler script | yes | yes (backend) | no | no |
@@ -266,7 +268,7 @@ Frontend only; no backend changes. Not deployed.
 
 | Area | What exists | Where |
 | --- | --- | --- |
-| Favicons and app icons | SVG, ICO (16/32/48), 16 and 32 px PNG, 180 px Apple touch icon, 192 and 512 px icons, 512 px maskable icon | `frontend/public/` |
+| Favicons and app icons | New Thread mark (thread, source node, lamp diamond); SVG, ICO (16/32/48), 16 and 32 px PNG, 180 px Apple touch icon, 192 and 512 px icons, 512 px maskable icon | `frontend/public/` |
 | Web manifest | Name, `id`, `scope`, standalone display, brand theme/background colours, `any` and `maskable` icons | `frontend/public/site.webmanifest` |
 | Page metadata | Title, 150-character description, canonical, robots, light/dark `theme-color` | `frontend/index.html` |
 | Social cards | Open Graph and Twitter `summary_large_image` with a 1200x630 image (no `twitter:site`: no verified account) | `index.html`, `public/og-image.png` |

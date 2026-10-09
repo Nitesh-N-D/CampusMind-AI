@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
-import { Badge, Button, Card, ErrorBanner, PageHeader, SkeletonList, EmptyState } from "@/components/ui";
-import { Seal } from "@/components/Seal";
+import { Badge, Button, ErrorBanner, PageHeader, SkeletonList, EmptyState } from "@/components/ui";
+import { TrustMeter } from "@/components/Seal";
+import { DocGlyph, StatusTag, shortDate, type DocStatus } from "@/components/campus";
 import { api, ApiError, type DocumentOut } from "@/lib/api";
 import { toastError, toastSuccess } from "@/lib/toastStore";
 import { UploadForm } from "@/pages/DocumentsUploadForm";
@@ -18,12 +19,12 @@ const FILE_TYPE_LABEL: Record<DocumentOut["file_type"], string> = {
   unknown: "File",
 };
 
-const STATUS_TONE: Record<string, "neutral" | "teal" | "amber" | "coral"> = {
-  ready: "teal",
-  processing: "amber",
-  uploaded: "amber",
-  failed: "coral",
-  archived: "neutral",
+const DOC_STATUS: Record<string, DocStatus> = {
+  ready: "current",
+  processing: "processing",
+  uploaded: "processing",
+  failed: "failed",
+  archived: "archived",
 };
 
 export default function AdminDocuments() {
@@ -100,54 +101,57 @@ export default function AdminDocuments() {
       )}
 
       {!loading && docs && docs.length > 0 && (
-        <div className="grid gap-3">
-          {docs.map((doc) => (
-            <Card key={doc.id} className="p-5 flex flex-col sm:flex-row gap-4">
-              <Seal score={doc.trust_score} level={doc.trust_level} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-medium text-ink-900">{doc.title}</h3>
-                  <Badge tone={STATUS_TONE[doc.status] ?? "neutral"}>{doc.status}</Badge>
-                  {doc.is_verified && <Badge tone="teal">Admin verified</Badge>}
-                  {doc.is_demo_data && <Badge tone="violet">Demo data</Badge>}
+        <div className="border-t border-line-strong">
+          {docs.map((doc) => {
+            const status = DOC_STATUS[doc.status] ?? "draft";
+            const unit =
+              doc.file_type === "pdf"
+                ? "page"
+                : doc.file_type === "excel"
+                  ? "sheet"
+                  : doc.file_type === "presentation"
+                    ? "slide"
+                    : "section";
+            return (
+              <article key={doc.id} className="py-5 border-b border-line flex flex-col sm:flex-row gap-4">
+                <div className="flex sm:flex-col items-center sm:items-start gap-3 sm:w-24 shrink-0">
+                  <DocGlyph version={doc.version} status={status} />
+                  <TrustMeter score={doc.trust_score} level={doc.trust_level} size="md" showLabel />
                 </div>
-                <p className="text-xs text-ink-400 mt-2" style={{ fontFamily: "var(--font-mono)" }}>
-                  {FILE_TYPE_LABEL[doc.file_type]} - {doc.document_type.replace("_", " ")}
-                  {doc.department ? ` - ${doc.department}` : ""}
-                  {doc.academic_year ? ` - ${doc.academic_year}` : ""}
-                  {" - v"}
-                  {doc.version} - {doc.page_count}{" "}
-                  {doc.file_type === "pdf"
-                    ? "page"
-                    : doc.file_type === "excel"
-                      ? "sheet"
-                      : doc.file_type === "presentation"
-                        ? "slide"
-                        : "section"}
-                  {doc.page_count === 1 ? "" : "s"}
-                </p>
-                {doc.effective_date && (
-                  <p className="text-xs text-ink-400 mt-1">
-                    Effective {new Date(doc.effective_date).toLocaleDateString()}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold text-ink-950 break-words min-w-0">{doc.title}</h3>
+                    <StatusTag status={status} />
+                    {doc.is_verified && <Badge tone="teal">Admin verified</Badge>}
+                    {doc.is_demo_data && <Badge tone="violet">Demo data</Badge>}
+                  </div>
+                  <p className="data text-ink-500 mt-2 break-words">
+                    {FILE_TYPE_LABEL[doc.file_type]} · {doc.document_type.replace("_", " ")}
+                    {doc.department ? ` · ${doc.department}` : ""}
+                    {doc.academic_year ? ` · ${doc.academic_year}` : ""} · v{doc.version} · {doc.page_count} {unit}
+                    {doc.page_count === 1 ? "" : "s"}
                   </p>
-                )}
-                {doc.processing_error && (
-                  <p className="text-xs text-seal-coral-700 mt-1">{doc.processing_error}</p>
-                )}
-                <DetectedEvents doc={doc} />
-              </div>
-              <div className="flex sm:flex-col gap-2 shrink-0">
-                {!doc.is_verified && (
-                  <Button variant="secondary" className="!py-1.5 text-xs" onClick={() => handleVerify(doc.id)}>
-                    Mark verified
+                  {doc.effective_date && (
+                    <p className="data text-ink-500 mt-1">Effective {shortDate(doc.effective_date)}</p>
+                  )}
+                  {doc.processing_error && (
+                    <p className="text-xs text-seal-coral-700 mt-1.5">{doc.processing_error}</p>
+                  )}
+                  <DetectedEvents doc={doc} />
+                </div>
+                <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+                  {!doc.is_verified && (
+                    <Button variant="secondary" className="text-xs" onClick={() => handleVerify(doc.id)}>
+                      Mark verified
+                    </Button>
+                  )}
+                  <Button variant="danger" className="text-xs" onClick={() => handleDelete(doc.id)}>
+                    Delete
                   </Button>
-                )}
-                <Button variant="danger" className="!py-1.5 text-xs" onClick={() => handleDelete(doc.id)}>
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </AppShell>

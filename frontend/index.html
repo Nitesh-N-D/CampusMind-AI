@@ -15,8 +15,8 @@
     <meta name="application-name" content="CampusMind AI" />
     <meta name="apple-mobile-web-app-title" content="CampusMind AI" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f2f4fa" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#161c2f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#e9ede8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1310" media="(prefers-color-scheme: dark)" />
     <script>
       // Set the theme before first paint to avoid a flash of the wrong
       // theme. Mirrors the logic in src/lib/themeStore.ts.
@@ -24,7 +24,7 @@
         try {
           var stored = localStorage.getItem("cm_theme");
           var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var theme = stored === "light" || stored === "dark" ? stored : dark ? "dark" : "light";
+          var theme = stored === "light" || stored === "dark" ? stored : dark ? "dark" : "light"  /* "system" or unset follows the OS */;
           document.documentElement.dataset.theme = theme;
         } catch (e) {}
       })();

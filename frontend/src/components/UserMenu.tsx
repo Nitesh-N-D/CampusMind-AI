@@ -72,7 +72,7 @@ export function UserMenu() {
 
   const displayName = nickname || fullName;
   const itemClass =
-    "w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-ink-800 rounded-[6px] hover:bg-surface-hover focus:bg-surface-hover outline-none";
+    "w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-ink-800 min-h-10 rounded-[var(--radius-chip)] hover:bg-surface-hover focus:bg-surface-hover outline-none";
 
   return (
     <div ref={rootRef} className="relative">
@@ -82,10 +82,10 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${displayName ?? "your account"}`}
-        className="flex items-center gap-2 rounded-full p-0.5 pr-0.5 sm:pr-2.5 hover:bg-surface-hover transition-colors"
+        className="flex items-center gap-2 rounded-[var(--radius-control)] p-0.5 pr-0.5 sm:pr-2.5 hover:bg-surface-hover transition-colors"
       >
         <span
-          className="w-8 h-8 rounded-full bg-violet-500 text-on-navy text-xs font-semibold flex items-center justify-center"
+          className="w-8 h-8 rounded-[var(--radius-control)] bg-lamp text-on-lamp text-xs font-bold flex items-center justify-center"
           aria-hidden="true"
         >
           {initials(displayName)}
@@ -110,7 +110,7 @@ export function UserMenu() {
           role="menu"
           aria-label="Account"
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 mt-2 w-64 bg-surface border border-line rounded-[var(--radius-card)] shadow-[var(--shadow-raised)] p-1.5 z-50"
+          className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] bg-surface border border-line rounded-[var(--radius-card)] shadow-[var(--shadow-raised)] p-1.5 z-50"
           style={{ animation: "fadeIn 120ms ease-out" }}
         >
           <div className="px-3 py-2.5 border-b border-line mb-1.5">
@@ -129,7 +129,7 @@ export function UserMenu() {
           </Link>
           <div className="border-t border-line my-1.5" />
           {/* Appearance + language. Tab moves through these without closing the menu. */}
-          <div data-menu-controls className="px-3 py-2 flex items-center justify-between gap-2">
+          <div data-menu-controls className="px-3 py-2 flex flex-col items-stretch gap-2">
             <ThemeToggle />
             <LanguageSelector className="min-w-0" />
           </div>

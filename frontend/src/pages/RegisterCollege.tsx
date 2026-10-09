@@ -53,7 +53,7 @@ export default function RegisterCollege() {
       footer={
         <>
           Already have a workspace?{" "}
-          <Link to="/login" className="text-violet-600 font-medium hover:underline">
+          <Link to="/login" className="text-violet-600 font-semibold underline underline-offset-4">
             Sign in
           </Link>
         </>

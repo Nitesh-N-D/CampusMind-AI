@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
 import { Button, EmptyState, ErrorBanner, PageHeader, SkeletonList } from "@/components/ui";
 import { Link } from "react-router-dom";
+import { DateStamp } from "@/components/campus";
 import { AskCampusMindButton, AttachmentButtons, CategoryBadge, DueBadge, PriorityBadge, formatWhen } from "@/components/notificationUi";
 import { api, ApiError, parseUtc, type NotificationOut, type ReminderBuckets } from "@/lib/api";
 
@@ -12,30 +13,21 @@ const SECTIONS: { key: keyof ReminderBuckets; title: string; empty: string }[] =
   { key: "past", title: "Past", empty: "Nothing here yet." },
 ];
 
-function ReminderRow({ n }: { n: NotificationOut }) {
+function ReminderRow({ n, state }: { n: NotificationOut; state: "past" | "later" | "soon" | "today" }) {
   const raw = n.deadline ?? n.event_date;
   const when = raw ? parseUtc(raw) : null;
   return (
-    <li className="flex gap-4 sm:gap-5 p-4 sm:p-5">
-      <div className="w-14 shrink-0 text-center border border-line-strong rounded-[var(--radius-control)] py-1.5 self-start">
-        {when ? (
-          <>
-            <p className="label-caps !text-[10px]">{when.toLocaleString(undefined, { month: "short" })}</p>
-            <p className="font-display text-2xl leading-none text-ink-950 mt-0.5">{when.getDate()}</p>
-          </>
-        ) : (
-          <p className="label-caps py-2">No date</p>
-        )}
-      </div>
+    <li className="flex gap-4 sm:gap-5 py-4 border-b border-line">
+      {when ? <DateStamp date={when} state={state} /> : <p className="label-caps w-12 shrink-0 pt-2">No date</p>}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <CategoryBadge category={n.category} />
           <PriorityBadge priority={n.priority} />
           <DueBadge n={n} />
         </div>
-        <h3 className="font-medium text-ink-950 mt-1.5">{n.title}</h3>
+        <h3 className="font-semibold text-ink-950 mt-1.5">{n.title}</h3>
         <p className="text-sm text-ink-700 mt-1 line-clamp-2">{n.body}</p>
-        <p className="text-xs text-ink-500 mt-1.5 font-mono">
+        <p className="data text-ink-500 mt-1.5">
           {n.department ? `${n.department} · ` : ""}
           {when ? formatWhen(raw as string) : ""}
         </p>
@@ -47,6 +39,13 @@ function ReminderRow({ n }: { n: NotificationOut }) {
     </li>
   );
 }
+
+const STATE_BY_BUCKET: Record<keyof ReminderBuckets, "past" | "later" | "soon" | "today"> = {
+  today: "today",
+  this_week: "soon",
+  upcoming: "later",
+  past: "past",
+};
 
 export default function Reminders() {
   const [data, setData] = useState<ReminderBuckets | null>(null);
@@ -88,22 +87,31 @@ export default function Reminders() {
         />
       )}
       {data && !empty && (
-        <div className="grid gap-8">
+        <div className="thread thread-list grid gap-8">
           {SECTIONS.map(({ key, title, empty: emptyText }) => (
-            <section key={key} aria-labelledby={`rem-${key}`}>
-              <h2 id={`rem-${key}`} className="label-caps !text-ink-800 mb-2 pb-2 border-b border-line-strong">
-                {title}
-                <span className="ml-2 text-ink-400">{data[key].length}</span>
-              </h2>
-              {data[key].length === 0 ? (
-                <p className="text-sm text-ink-500">{emptyText}</p>
-              ) : (
-                <ul className="border border-line rounded-[var(--radius-card)] bg-surface divide-y divide-line">
-                  {data[key].map((n) => (
-                    <ReminderRow key={n.id} n={n} />
-                  ))}
-                </ul>
-              )}
+            <section key={key} aria-labelledby={`rem-${key}`} className="flex gap-3">
+              <span className="thread-node mt-0.5 z-[1] bg-paper-100" aria-hidden="true">
+                <span
+                  className={`block w-3.5 h-3.5 rotate-45 outline outline-1 outline-ink-950 ${
+                    data[key].length > 0 && key !== "past" ? "bg-lamp" : "bg-paper-100"
+                  }`}
+                />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 id={`rem-${key}`} className="flex items-baseline gap-2 text-xl font-bold text-ink-950 pb-2 border-b border-line-strong">
+                  {title}
+                  <span className="data text-ink-500">{data[key].length}</span>
+                </h2>
+                {data[key].length === 0 ? (
+                  <p className="text-sm text-ink-500 pt-3">{emptyText}</p>
+                ) : (
+                  <ul>
+                    {data[key].map((n) => (
+                      <ReminderRow key={n.id} n={n} state={STATE_BY_BUCKET[key]} />
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
           ))}
         </div>

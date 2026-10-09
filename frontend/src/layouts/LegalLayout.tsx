@@ -22,11 +22,11 @@ export function LegalLayout({ title, updated, children }: { title: string; updat
         {/* Back sits above the title so it is visible without scrolling. */}
         <BackLink />
         <div className="mt-4 pb-6 border-b border-line">
-          <span className="label-caps text-violet-600">{pathname === "/terms" ? "Terms" : "Privacy"}</span>
-          <h1 className="font-display text-3xl text-ink-950 mt-1">{title}</h1>
-          <p className="text-sm text-ink-500 mt-2 font-mono">Last updated {updated}</p>
+          <span className="label-caps">{pathname === "/terms" ? "Terms" : "Privacy"}</span>
+          <h1 className="text-3xl sm:text-4xl font-bold text-ink-950 mt-1">{title}</h1>
+          <p className="data text-ink-500 mt-2.5">Last updated · {updated}</p>
         </div>
-        <div className="mt-8 flex flex-col gap-8 text-sm text-ink-700 leading-relaxed [&_section]:pt-6 [&_section]:border-t [&_section]:border-line">
+        <div className="legal-prose mt-8 flex flex-col gap-8 [&_section]:pt-6 [&_section]:border-t [&_section]:border-line">
           {children}
         </div>
       </main>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
-import { Badge, Button, Card, ErrorBanner, PageHeader, SkeletonList, EmptyState } from "@/components/ui";
+import { Button, ErrorBanner, PageHeader, SkeletonList, EmptyState } from "@/components/ui";
+import { Supersession, shortDate } from "@/components/campus";
 import { api, ApiError, type ConflictRecord, type DocumentOut } from "@/lib/api";
 import { toastError, toastSuccess } from "@/lib/toastStore";
 
@@ -64,90 +65,66 @@ export default function AdminConflicts() {
       )}
 
       {!loading && conflicts && conflicts.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-8">
           {conflicts.map((c) => {
             const docA = docsById[c.document_a_id];
             const docB = docsById[c.document_b_id];
+            const titleA = docA?.title ?? `Document #${c.document_a_id}`;
+            const titleB = docB?.title ?? `Document #${c.document_b_id}`;
+            const facts = (d: DocumentOut | undefined) =>
+              d
+                ? [`v${d.version}`, d.effective_date ? `effective ${shortDate(d.effective_date)}` : null]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "";
+            const suggestedA = c.suggested_authoritative_id === c.document_a_id;
+            const suggestedB = c.suggested_authoritative_id === c.document_b_id;
             return (
-              <Card key={c.id} className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Badge tone="amber">Conflict</Badge>
-                  <h3 className="font-medium text-ink-900 capitalize">{c.topic}</h3>
+              <article key={c.id} aria-label={`Conflict: ${c.topic}`}>
+                <Supersession
+                  topic={c.topic}
+                  reasoning={c.reasoning}
+                  lanes={[
+                    {
+                      tag: suggestedA ? "Source A · Suggested" : "Source A",
+                      value: c.value_a,
+                      source: [titleA, facts(docA)].filter(Boolean).join(" · "),
+                    },
+                    {
+                      tag: suggestedB ? "Source B · Suggested" : "Source B",
+                      value: c.value_b,
+                      source: [titleB, facts(docB)].filter(Boolean).join(" · "),
+                    },
+                  ]}
+                />
+                <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                  <Button
+                    variant={suggestedA ? "primary" : "secondary"}
+                    onClick={() => resolve(c.id, c.document_a_id)}
+                    disabled={resolvingId === c.id}
+                  >
+                    Keep Source A as authoritative
+                  </Button>
+                  <Button
+                    variant={suggestedB ? "primary" : "secondary"}
+                    onClick={() => resolve(c.id, c.document_b_id)}
+                    disabled={resolvingId === c.id}
+                  >
+                    Keep Source B as authoritative
+                  </Button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <ConflictSide
-                    label="Source A"
-                    title={docA?.title ?? `Document #${c.document_a_id}`}
-                    value={c.value_a}
-                    suggested={c.suggested_authoritative_id === c.document_a_id}
-                    effectiveDate={docA?.effective_date}
-                    onKeep={() => resolve(c.id, c.document_a_id)}
-                    busy={resolvingId === c.id}
-                  />
-                  <ConflictSide
-                    label="Source B"
-                    title={docB?.title ?? `Document #${c.document_b_id}`}
-                    value={c.value_b}
-                    suggested={c.suggested_authoritative_id === c.document_b_id}
-                    effectiveDate={docB?.effective_date}
-                    onKeep={() => resolve(c.id, c.document_b_id)}
-                    busy={resolvingId === c.id}
-                  />
-                </div>
-                <p className="text-sm text-ink-500 mt-4 bg-paper-100 rounded-[var(--radius-control)] px-4 py-3">
-                  {c.reasoning}
-                </p>
                 <input
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Optional resolution note for the record..."
-                  aria-label="Resolution note"
-                  className="w-full mt-3 h-10 text-sm bg-surface text-ink-900 placeholder:text-ink-400 border border-line-strong rounded-[var(--radius-control)] px-3 outline-none focus:border-violet-500"
+                  aria-label={`Resolution note for ${c.topic}`}
+                  className="w-full mt-3 min-h-11 text-sm bg-surface text-ink-900 placeholder:text-ink-500 border border-line-strong rounded-[var(--radius-control)] px-3 outline-none focus:border-ink-950"
                 />
-              </Card>
+              </article>
             );
           })}
         </div>
       )}
     </AppShell>
-  );
-}
-
-function ConflictSide({
-  label,
-  title,
-  value,
-  suggested,
-  effectiveDate,
-  onKeep,
-  busy,
-}: {
-  label: string;
-  title: string;
-  value: string;
-  suggested: boolean;
-  effectiveDate?: string | null;
-  onKeep: () => void;
-  busy: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-[var(--radius-control)] border p-4 ${
-        suggested ? "border-seal-teal-600 bg-seal-teal-50" : "border-line"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-ink-500 uppercase tracking-wide">{label}</span>
-        {suggested && <Badge tone="teal">Suggested</Badge>}
-      </div>
-      <p className="text-sm font-medium text-ink-900 mt-1.5">{title}</p>
-      <p className="text-2xl font-display text-ink-950 mt-1">{value}</p>
-      {effectiveDate && (
-        <p className="text-xs text-ink-400 mt-1">Effective {new Date(effectiveDate).toLocaleDateString()}</p>
-      )}
-      <Button variant="secondary" className="w-full mt-3 !py-2 text-xs" onClick={onKeep} disabled={busy}>
-        Keep this as authoritative
-      </Button>
-    </div>
   );
 }

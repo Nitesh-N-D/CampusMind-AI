@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
@@ -83,7 +84,8 @@ async def upload_profile_avatar(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    data = await file.read()
+    # One byte past the limit is enough for validation to reject it.
+    data = await file.read(settings.max_avatar_mb * 1024 * 1024 + 1)
 
     try:
         validate_avatar_bytes(file.content_type or "", data)

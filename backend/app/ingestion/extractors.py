@@ -23,6 +23,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import threading
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Iterable, List, Optional
@@ -46,6 +47,14 @@ LEGACY_EXTENSIONS = {".doc": ".docx", ".xls": ".xlsx", ".ppt": ".pptx"}
 
 MAX_SPREADSHEET_ROWS = 20_000
 MAX_IMAGE_PIXELS = 40_000_000
+# Text recognition memory grows with pixel count (about 600 MB extra for a
+# 12 MP photo, measured), so pictures are shrunk to this longest side and
+# read in overlapping horizontal bands of about OCR_BAND_PIXELS rather than
+# whole. Bands stay at least 736 rows: the detector enlarges anything thinner.
+MAX_OCR_SIDE = 1600
+OCR_BAND_PIXELS = 1_200_000
+OCR_BAND_MIN_ROWS = 736
+OCR_BAND_OVERLAP = 120
 
 
 class ExtractionError(Exception):
@@ -116,6 +125,7 @@ def content_matches_type(file_type: str, head: bytes) -> bool:
 # ---------- OCR ----------
 
 _ocr_engine = None
+_ocr_lock = threading.Lock()
 
 
 def _get_ocr_engine():
@@ -134,11 +144,44 @@ def _get_ocr_engine():
 def ocr_image(image) -> str:
     """OCR a PIL image. Returns recognized lines top-to-bottom, joined by newlines."""
     import numpy as np
+    from PIL import Image
 
     if image.width * image.height > MAX_IMAGE_PIXELS:
         raise ExtractionError("This image is too large to read. Resize it below 40 megapixels and try again.")
-    engine = _get_ocr_engine()
-    result, _ = engine(np.array(image.convert("RGB")))
+    longest = max(image.size)
+    if longest > MAX_OCR_SIDE:
+        scale = MAX_OCR_SIDE / longest
+        # A new, smaller image; the caller's picture is left as it was.
+        image = image.resize(
+            (max(1, round(image.width * scale)), max(1, round(image.height * scale))), Image.LANCZOS, reducing_gap=2.0
+        )
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    width, height = image.size
+    band = max(OCR_BAND_MIN_ROWS, OCR_BAND_PIXELS // width)
+    result = []
+    top = 0
+    while True:
+        bottom = min(top + band, height)
+        last = bottom >= height
+        piece = np.array(image.crop((0, top, width, bottom)))
+        # One recognition at a time: two large activations at once is what
+        # runs a small host out of memory.
+        with _ocr_lock:
+            found, _ = _get_ocr_engine()(piece)
+        del piece
+        for box, text, score in found or []:
+            # A line inside the overlap is seen by both bands; keep it from
+            # the band where it is further from the cut.
+            centre = top + (box[0][1] + box[2][1]) / 2
+            if (top == 0 or centre >= top + OCR_BAND_OVERLAP / 2) and (
+                last or centre < bottom - OCR_BAND_OVERLAP / 2
+            ):
+                result.append([[[p[0], p[1] + top] for p in box], text, score])
+        if last:
+            break
+        top = bottom - OCR_BAND_OVERLAP
+    del image
     if not result:
         return ""
     # Each result is [box, text, score]; sort by the box's top edge, then left.
@@ -187,17 +230,20 @@ def _ocr_pdf_page(page) -> str:
     """Scanned PDF pages are usually one embedded image per page - OCR every
     embedded image on the page and join the results."""
     texts = []
+    # Iterated lazily: each embedded picture is decoded, read and dropped
+    # before the next, instead of holding every decoded image of the page.
     try:
-        images = list(page.images)
+        for img in page.images:
+            try:
+                texts.append(ocr_image(img.image))
+            except ExtractionError:
+                raise
+            except Exception:  # noqa: BLE001
+                continue
+    except ExtractionError:
+        raise
     except Exception:  # noqa: BLE001 - unsupported image encodings inside the PDF
-        return ""
-    for img in images:
-        try:
-            texts.append(ocr_image(img.image))
-        except ExtractionError:
-            raise
-        except Exception:  # noqa: BLE001
-            continue
+        return "\n".join(t for t in texts if t).strip()
     return "\n".join(t for t in texts if t).strip()
 
 
@@ -398,10 +444,15 @@ def extract_image(file_path: str) -> List[PageContent]:
                 raise ExtractionError(
                     "This image is too large to read. Resize it below 40 megapixels and try again."
                 )
+            # JPEGs can be decoded at a fraction of full size, which avoids
+            # holding a full-resolution bitmap just to shrink it for OCR.
+            scale = MAX_OCR_SIDE / max(img.size)
+            img.draft("RGB", (round(img.width * scale), round(img.height * scale)))
             img.load()
             # Phone cameras store pixels sideways and record the rotation in
             # EXIF; apply it so OCR sees the notice upright.
-            text = ocr_image(ImageOps.exif_transpose(img))
+            upright = ImageOps.exif_transpose(img) if img.getexif().get(0x0112, 1) != 1 else img
+            text = ocr_image(upright)
     except ExtractionError:
         raise
     except (UnidentifiedImageError, OSError, SyntaxError) as exc:

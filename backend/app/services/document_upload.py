@@ -6,6 +6,7 @@ normal Document, never a second copy.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from datetime import datetime
@@ -49,10 +50,13 @@ async def read_and_validate(file: UploadFile) -> tuple[str, str, str, bytes]:
         raise HTTPException(status_code=400, detail=unsupported_type_message(filename))
     ext = os.path.splitext(filename)[1].lower()
 
-    contents = await file.read()
+    # One byte past the limit is enough to know it's too big; never pull an
+    # arbitrarily large body into memory just to reject it.
+    limit = settings.max_upload_mb * 1024 * 1024
+    contents = await file.read(limit + 1)
     if not contents:
         raise HTTPException(status_code=400, detail="This file is empty.")
-    if len(contents) > settings.max_upload_mb * 1024 * 1024:
+    if len(contents) > limit:
         raise HTTPException(status_code=400, detail=f"File exceeds {settings.max_upload_mb}MB limit.")
     if not content_matches_type(file_type, contents[:8192]):
         raise HTTPException(
@@ -63,7 +67,19 @@ async def read_and_validate(file: UploadFile) -> tuple[str, str, str, bytes]:
     return filename, ext, file_type, contents
 
 
-async def create_document(
+# Reading, text recognition and indexing of an upload is the heaviest thing
+# the server does. A small host can hold a couple of those at once, not a
+# queue of them, so extra uploads wait their turn instead of piling up.
+MAX_CONCURRENT_INGESTIONS = 2
+_ingestion_slots = asyncio.Semaphore(MAX_CONCURRENT_INGESTIONS)
+
+
+async def create_document(db: Session, admin: models.User, file: UploadFile, **fields) -> models.Document:
+    async with _ingestion_slots:
+        return await _create_document(db, admin, file, **fields)
+
+
+async def _create_document(
     db: Session,
     admin: models.User,
     file: UploadFile,
@@ -109,6 +125,9 @@ async def create_document(
         work_path = os.path.join(settings.upload_dir, f"tmp-{uuid.uuid4().hex}{ext}")
         with open(work_path, "wb") as f:
             f.write(contents)
+    # Everything below works from the stored file; don't hold up to
+    # MAX_UPLOAD_MB of bytes in memory while indexing waits on the network.
+    del contents
 
     document = models.Document(
         college_id=admin.college_id,

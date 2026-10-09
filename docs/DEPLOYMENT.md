@@ -98,11 +98,20 @@ of inactivity. The first request after idle takes ~30-50 seconds to wake
 up - normal, not a bug. Upgrade to a paid instance if that matters for your
 users.
 
-**OCR note**: the OCR model loads the first time an image or scanned PDF
-is uploaded after each start (several seconds locally), then stays in
-memory. Memory use on Render's smallest instance hasn't been measured for
-this build; if image uploads fail there with out-of-memory errors, move to
-a larger instance.
+**OCR and memory note**: the OCR model loads the first time an image or
+scanned PDF is uploaded after each start, then stays in memory (about 65 MB).
+The app itself needs about 145 MB. Recognition memory grows with the number of
+pixels, so pictures are shrunk to a 1600 px longest side and read in
+overlapping bands (`MAX_OCR_SIDE`, `OCR_BAND_PIXELS` in
+`app/ingestion/extractors.py`), one at a time, and at most two uploads are
+indexed at once (`MAX_CONCURRENT_INGESTIONS` in
+`app/services/document_upload.py`). On a developer's Windows machine a 12 MP
+photo peaked near 440 MB (700+ MB before this limit existed) - local numbers,
+not Render's. Run a single uvicorn process (no `--workers`, and no
+`WEB_CONCURRENCY` above 1): each worker would load its own copy of the app and
+the OCR model. After a deploy, check Render's Metrics tab while uploading a
+phone photo and a scanned PDF; if memory still approaches 512 MB, lower
+`MAX_UPLOAD_MB` or move to a larger instance.
 
 ## Step 4 - Frontend (Vercel)
 

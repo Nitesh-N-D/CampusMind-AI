@@ -1,3 +1,5 @@
+import logging
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -90,5 +92,22 @@ def validate_production_settings(cfg: "Settings") -> None:
         )
 
 
+def offline_fallbacks(cfg: "Settings") -> list[str]:
+    """Names the AI features that would silently run in offline demo mode
+    because their provider has no API key. Only the names are returned."""
+    out = []
+    keys = {"gemini": cfg.gemini_api_key, "openai": cfg.openai_api_key, "claude": cfg.anthropic_api_key}
+    if cfg.ai_provider.lower() in keys and not keys[cfg.ai_provider.lower()].strip():
+        out.append("answers")
+    if cfg.embedding_provider.lower() in ("gemini", "openai") and not keys[cfg.embedding_provider.lower()].strip():
+        out.append("embeddings")
+    return out
+
+
 settings = Settings()
 validate_production_settings(settings)
+if settings.environment.strip().lower() == "production" and offline_fallbacks(settings):
+    logging.getLogger("campusmind").warning(
+        "Production is running with offline demo %s: the configured AI provider has no API key.",
+        " and ".join(offline_fallbacks(settings)),
+    )

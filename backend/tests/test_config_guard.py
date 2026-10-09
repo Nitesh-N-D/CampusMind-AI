@@ -88,3 +88,11 @@ def test_jwt_signing_still_uses_the_configured_key():
     from app.core.security import create_access_token, decode_token
 
     assert decode_token(create_access_token({"sub": "1"}))["sub"] == "1"
+
+
+def test_offline_fallbacks_names_keyless_ai_features_without_values():
+    from app.core.config import offline_fallbacks
+
+    assert offline_fallbacks(make(ai_provider="gemini", embedding_provider="gemini", gemini_api_key="")) == ["answers", "embeddings"]
+    assert offline_fallbacks(make(ai_provider="gemini", embedding_provider="local", gemini_api_key="x")) == []
+    assert offline_fallbacks(make(ai_provider="mock", embedding_provider="local")) == []

@@ -100,3 +100,12 @@ def test_forbidden_says_who_the_page_is_for(client, student_token):
     resp = client.get("/api/admin/settings", headers={"Authorization": f"Bearer {student_token}"})
     assert resp.status_code == 403
     assert resp.json()["detail"] == "Your account doesn't have access to this. It's only for admins."
+
+
+def test_blank_or_oversized_chat_message_is_rejected_and_creates_nothing(client, student_token):
+    headers = {"Authorization": f"Bearer {student_token}"}
+    for bad in ("", "   \n ", "x" * 2001):
+        resp = client.post("/api/chat/message", headers=headers, json={"message": bad})
+        assert resp.status_code == 422
+        assert isinstance(resp.json()["detail"], str)
+    assert client.get("/api/chat/sessions", headers=headers).json() == []

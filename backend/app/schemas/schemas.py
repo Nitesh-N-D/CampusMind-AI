@@ -173,6 +173,16 @@ class ChatRequest(BaseModel):
     message: str
     language: Optional[str] = Field(default="en", max_length=10)
 
+    @field_validator("message")
+    @classmethod
+    def _message_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Type a question first.")
+        if len(v) > 2000:
+            raise ValueError("Questions can be at most 2000 characters.")
+        return v
+
 
 class CitationOut(BaseModel):
     document_id: int

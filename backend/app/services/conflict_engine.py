@@ -22,12 +22,27 @@ TOPIC_PATTERNS = {
         r"(?:minimum\s+)?attendance[^.\n%]{0,40}?(\d{1,3})\s*%", re.IGNORECASE
     ),
     "fee_amount": re.compile(
-        r"(?:fee|fees)[^.\n₹Rs]{0,40}?(?:₹|Rs\.?)\s?([\d,]{3,10})", re.IGNORECASE
+        r"(?:fee|fees)(?:(?!₹|Rs)[^.\n]){0,40}?(?:₹|Rs\.?)\s?([\d,]{3,10})", re.IGNORECASE
     ),
     "cgpa_requirement": re.compile(
         r"(?:minimum\s+)?CGPA[^.\n\d]{0,20}?(\d\.\d{1,2})", re.IGNORECASE
     ),
+    # A time range in the same sentence as "visiting hours". Dotted forms such
+    # as "a.m." are not matched, so the sentence limit stays strict.
+    "visiting_hours": re.compile(
+        r"visit(?:ing|ors?)?\s+hours?[^.\n]{0,60}?"
+        r"(\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:to|-|–|—)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm|noon))",
+        re.IGNORECASE,
+    ),
 }
+
+
+def _normalize_value(topic: str, value: str) -> str:
+    """Spelling-only differences ("4 PM to 6 PM" vs "4 pm - 6 pm") are not conflicts."""
+    if topic == "visiting_hours":
+        value = re.sub(r"\s*(?:to|–|—)\s*", "-", value.lower())
+        return re.sub(r"\s+", "", value)
+    return value
 
 
 @dataclass
@@ -42,7 +57,7 @@ def extract_topic_values(chunk: models.DocumentChunk) -> List[TopicMatch]:
     for topic, pattern in TOPIC_PATTERNS.items():
         m = pattern.search(chunk.content)
         if m:
-            matches.append(TopicMatch(topic=topic, value=m.group(1), chunk=chunk))
+            matches.append(TopicMatch(topic=topic, value=_normalize_value(topic, m.group(1)), chunk=chunk))
     return matches
 
 

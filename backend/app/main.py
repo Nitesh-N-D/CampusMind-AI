@@ -160,6 +160,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             "detail": "Something went wrong on our end. Please try again.",
             "request_id": request_id,
         },
+        # Built outside the logging middleware, so the header is set here too.
+        headers={"X-Request-ID": request_id},
     )
 
 

@@ -64,7 +64,7 @@ export default function RegisterCollege() {
         <Input
           id="college_name"
           label="College name"
-          placeholder="Madras Institute of Technology"
+          placeholder="Greenfield Institute of Technology"
           required
           value={form.college_name}
           onChange={update("college_name")}
@@ -72,7 +72,7 @@ export default function RegisterCollege() {
         <Input
           id="official_domain"
           label="Official email domain"
-          placeholder="mitindia.edu"
+          placeholder="greenfield.edu"
           hint="Only emails on this domain will be able to sign up for your chatbot."
           required
           value={form.official_domain}
@@ -82,7 +82,7 @@ export default function RegisterCollege() {
         <Input
           id="admin_full_name"
           label="Your full name"
-          placeholder="Dr. Jane Doe"
+          placeholder="Alex Johnson"
           required
           value={form.admin_full_name}
           onChange={update("admin_full_name")}
@@ -91,7 +91,7 @@ export default function RegisterCollege() {
           id="admin_email"
           type="email"
           label="Your admin email"
-          placeholder={`you@${form.official_domain || "yourcollege.edu"}`}
+          placeholder={`admin@${form.official_domain || "greenfield.edu"}`}
           hint="Must match the official domain above."
           required
           value={form.admin_email}

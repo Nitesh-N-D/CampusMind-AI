@@ -100,7 +100,7 @@ export default function RegisterStudent() {
         <Input
           id="full_name"
           label="Full name"
-          placeholder={role === "faculty" ? "Dr. Jane Doe" : "Vijay Sethupathi"}
+          placeholder={role === "faculty" ? "Dr. Jane Doe" : "Rahul Kumar"}
           required
           value={form.full_name}
           onChange={update("full_name")}

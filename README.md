@@ -89,7 +89,7 @@ Open <http://localhost:5173>.
 ### 3. Try the end-to-end demo flow
 
 1. Visit `/register-college`, create a workspace with a real domain (e.g.
-   `mitindia.edu`) - you become its first admin.
+   `greenfield.edu`) - you become its first admin.
 2. Upload the sample files in `backend/seed_data/` (clearly marked demo data)
    from **Documents**: upload `attendance_reg_2025.pdf` first, then upload
    `attendance_reg_2026.pdf` and set "Supersedes" to the first one. The Word,

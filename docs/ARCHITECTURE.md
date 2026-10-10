@@ -35,7 +35,7 @@ never a client-supplied one. This is what
 verifies: College B's admin token returns zero documents from College A.
 
 Signup is domain-restricted: `POST /api/auth/register-college` captures an
-`official_domain` (e.g. `mitindia.edu`), and `POST /api/auth/register-student`
+`official_domain` (e.g. `greenfield.edu`), and `POST /api/auth/register-student`
 rejects any email whose domain doesn't match that college's domain. Faculty
 are matched only against the college's admin-set `faculty_domain`; while it
 is unset, faculty signup at that college is closed. Roles

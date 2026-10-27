@@ -24,6 +24,7 @@ STOPWORDS = frozenset(
     they this those through to too under until up very was we were what when where which while who
     whom why will with would you your yours yourself yourselves
     also get got let may might must shall us tell know need want please thanks thank
+    many much available
     """.split()
 )
 

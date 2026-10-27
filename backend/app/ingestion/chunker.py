@@ -30,13 +30,23 @@ def chunk_pages(pages: List[PageContent]) -> List[Chunk]:
         if not page.text:
             continue
         sentences = _split_sentences(page.text)
-        buf = ""
+        buf: List[str] = []
+        size = 0
         for sentence in sentences:
-            if len(buf) + len(sentence) > CHUNK_TARGET_CHARS and buf:
-                chunks.append(Chunk(content=buf.strip(), page_number=page.page_number, heading=page.heading))
-                buf = buf[-CHUNK_OVERLAP_CHARS:] + " " + sentence
-            else:
-                buf = (buf + " " + sentence).strip()
-        if buf.strip():
-            chunks.append(Chunk(content=buf.strip(), page_number=page.page_number, heading=page.heading))
+            if size + len(sentence) > CHUNK_TARGET_CHARS and buf:
+                chunks.append(Chunk(content=" ".join(buf).strip(), page_number=page.page_number, heading=page.heading))
+                # Carry over whole trailing sentences (never a fragment), so a
+                # table row or list item is not cut in half at a boundary.
+                tail: List[str] = []
+                tail_size = 0
+                for prev in reversed(buf):
+                    if tail_size + len(prev) > CHUNK_OVERLAP_CHARS:
+                        break
+                    tail.insert(0, prev)
+                    tail_size += len(prev)
+                buf, size = tail, tail_size
+            buf.append(sentence)
+            size += len(sentence)
+        if buf and " ".join(buf).strip():
+            chunks.append(Chunk(content=" ".join(buf).strip(), page_number=page.page_number, heading=page.heading))
     return chunks

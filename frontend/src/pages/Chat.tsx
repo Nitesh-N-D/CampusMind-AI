@@ -78,6 +78,7 @@ interface LocalMessage {
   hasConflict?: boolean;
   conflicts?: { topic: string; value_a: string; value_b: string; reasoning: string }[];
   abstained?: boolean;
+  basis?: "documents" | "conversation" | null;
   pending?: boolean;
 }
 
@@ -156,6 +157,8 @@ export default function Chat() {
           citations: m.citations,
           confidence: m.confidence,
           hasConflict: m.has_conflict,
+          abstained: m.answer_status === "insufficient_evidence",
+          basis: m.basis,
         }))
       );
     } catch (err) {
@@ -206,7 +209,8 @@ export default function Chat() {
                 confidence: res.confidence,
                 hasConflict: res.has_conflict,
                 conflicts: res.conflicts,
-                abstained: res.abstained,
+                abstained: res.answer_status === "insufficient_evidence" || res.abstained,
+                basis: res.basis,
               }
             : m
         )
@@ -701,20 +705,24 @@ function MessageBubble({
     );
   }
 
+  // Answers from the conversation alone have no document evidence to rate.
+  const fromConversation = message.basis === "conversation";
   const lowConfidence =
-    !message.abstained && typeof message.confidence === "number" && message.confidence < LOW_CONFIDENCE;
-  const rated = !message.abstained && typeof message.confidence === "number";
+    !message.abstained && !fromConversation && typeof message.confidence === "number" && message.confidence < LOW_CONFIDENCE;
+  const rated = !message.abstained && !fromConversation && typeof message.confidence === "number";
   const noEvidence = !!message.abstained || (!message.citations || message.citations.length === 0);
 
   return (
     <AnswerBlock
       answer={message.content}
-      trust={trustFromConfidence(message.confidence, message.abstained || (noEvidence && !rated))}
+      trust={trustFromConfidence(message.confidence, message.abstained || fromConversation || (noEvidence && !rated))}
       score={message.confidence}
       note={lowConfidence ? t("chat.lowConfidence") : undefined}
       conflicts={message.hasConflict ? message.conflicts : undefined}
       sourcesLabel={t("chat.sources")}
-      sources={(message.citations ?? []).map((c) => ({
+      seeMoreLabel={t("chat.seeMore")}
+      seeLessLabel={t("chat.seeLess")}
+      sources={(message.abstained ? [] : message.citations ?? []).map((c) => ({
         title: c.document_title,
         page: c.page,
         section: c.section,

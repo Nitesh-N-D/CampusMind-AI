@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
+from app.rag.memory import recent_turns
 from app.rag.pipeline import answer_question
 from app.schemas.schemas import ChatRequest, ChatResponse, FeedbackRequest
 from app.services.ai_provider import get_ai_provider
@@ -19,6 +20,62 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 def _utc(value: Optional[datetime]) -> Optional[datetime]:
     # Stored naive UTC; mark it so browsers don't read it as local time.
     return value.replace(tzinfo=timezone.utc) if value else None
+
+
+def _selectable_documents(db: Session, user: models.User):
+    """Documents this user may scope a question to: their own college's READY
+    documents, narrowed for students to their department (or college-wide
+    ones) - the same visibility rule the unscoped search applies."""
+    q = db.query(models.Document).filter(
+        models.Document.college_id == user.college_id,
+        models.Document.status == models.DocumentStatus.READY,
+    )
+    if user.role == models.UserRole.STUDENT and user.department:
+        q = q.filter(
+            (models.Document.department == user.department) | (models.Document.department.is_(None))
+        )
+    return q
+
+
+@router.get("/documents")
+def list_chat_documents(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    docs = _selectable_documents(db, user).order_by(models.Document.title, models.Document.id).all()
+    return [
+        {
+            "id": d.id,
+            "title": d.title,
+            "filename": d.original_filename,
+            "document_type": d.document_type,
+            "department": d.department,
+            "page_count": d.page_count,
+            "uploaded_at": _utc(d.created_at),
+        }
+        for d in docs
+    ]
+
+
+def _resolve_scope(db: Session, user: models.User, document_id: int) -> models.Document:
+    """Validates a client-supplied document id on the server. Unknown ids,
+    other colleges' documents and ones outside the user's visibility all look
+    the same (404) so existence isn't leaked."""
+    doc = db.query(models.Document).filter(
+        models.Document.id == document_id, models.Document.college_id == user.college_id
+    ).first()
+    if doc is not None and user.role == models.UserRole.STUDENT and user.department:
+        if doc.department and doc.department != user.department:
+            doc = None
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.status in (models.DocumentStatus.UPLOADED, models.DocumentStatus.PROCESSING):
+        raise HTTPException(status_code=409, detail="This document is still being processed. Try again in a moment.")
+    if doc.status == models.DocumentStatus.FAILED:
+        raise HTTPException(
+            status_code=409,
+            detail=doc.processing_error or "This document could not be processed, so it can't be searched.",
+        )
+    if not db.query(models.DocumentChunk.id).filter(models.DocumentChunk.document_id == doc.id).first():
+        raise HTTPException(status_code=409, detail="This document has no readable text, so it can't be searched.")
+    return doc
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -36,6 +93,9 @@ async def send_message(
         if not session:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
+    if payload.document_id is not None:
+        _resolve_scope(db, user, payload.document_id)
+
     asked_at = datetime.utcnow()
     ai = get_ai_provider()
     result = await answer_question(
@@ -45,6 +105,10 @@ async def send_message(
         ai=ai,
         student=user if user.role == models.UserRole.STUDENT else None,
         response_language=payload.language or "en",
+        document_id=payload.document_id,
+        history=recent_turns(session),
+        user_id=user.id,
+        session_id=session.id if session else None,
     )
 
     # Written only once there is an answer: if the AI call fails, the user
@@ -70,6 +134,8 @@ async def send_message(
         confidence=result.confidence,
         has_conflict=result.has_conflict,
         conflict_ids=[c["id"] for c in result.conflicts],
+        answer_status=result.answer_status,
+        answer_basis=result.basis,
         retrieval_ms=result.retrieval_ms,
         llm_ms=result.llm_ms,
     )
@@ -106,6 +172,8 @@ async def send_message(
         retrieval_ms=result.retrieval_ms,
         llm_ms=result.llm_ms,
         abstained=result.abstained,
+        answer_status=result.answer_status,
+        basis=result.basis,
     )
 
 
@@ -165,6 +233,8 @@ def get_messages(
             "citations": m.citations,
             "confidence": m.confidence,
             "has_conflict": m.has_conflict,
+            "answer_status": m.answer_status,
+            "basis": m.answer_basis,
             "created_at": _utc(m.created_at),
         }
         for m in session.messages

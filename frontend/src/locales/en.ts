@@ -36,6 +36,8 @@ export const en = {
   "chat.disclaimer": "Answers are drawn from uploaded official documents. Check the cited source before acting on a deadline.",
   "chat.checking": "Checking your college's documents...",
   "chat.sources": "Sources",
+  "chat.seeMore": "See more",
+  "chat.seeLess": "See less",
   "chat.confidence": "confidence {value}%",
   "chat.lowConfidence": "Low confidence - verify with the cited document",
   "chat.conflictTitle": "Conflicting official sources on {topic}",

@@ -247,3 +247,56 @@ Everything above runs on:
 - **AI**: Gemini free tier
 
 See `docs/DEPLOYMENT.md` for the concrete steps.
+
+## Document-scoped chat
+
+`POST /api/chat/message` accepts an optional `document_id`. When present:
+
+- The backend validates it (same college; students also limited to their department or college-wide documents; document must be processed and have text). Anything else is a 404/409, never a fallback to all documents.
+- `rag.pipeline.retrieve` adds `document_chunks.document_id = :id` to the candidate query, so scoring and top-k run only inside that document. Conflict detection (which compares across documents) is skipped.
+- A dedicated system prompt allows answers only from the excerpts and mandates the reply "The selected document does not contain enough information to answer this question." when they are insufficient.
+- `GET /api/chat/documents` lists the documents the caller may scope to. The chat UI no longer has a selector: the relevant document is found automatically from the question (see below). `document_id` remains a validated API option.
+
+Schema: `document_chunks` has a unique index on `(document_id, chunk_index)` (created by `create_all` for new databases and by `app/db/migrations.py` at startup for existing ones; skipped with a warning if legacy duplicates exist). Re-processing a document deletes and rebuilds only its own chunks; deleting a document cascades to its chunks.
+
+## Answerability and conversation memory
+
+Every assistant message carries `answer_status` (`answered` | `insufficient_evidence`) and `basis` (`documents` | `conversation` | null), persisted on `chat_messages` (`answer_status`, `answer_basis`; added by the startup migration).
+
+- **Insufficient evidence.** If no relevant passages survive retrieval (term-coverage and relative-score cutoffs, then a minimum confidence), or the model replies `INSUFFICIENT_EVIDENCE` (or a refusal that cites nothing), the pipeline returns one short fixed message (`FALLBACK_MESSAGE`, en/ta/hi) with `citations = []`, confidence 0, no conflicts and `abstained = true`. Sources are dropped in the backend, not hidden in the UI, so nothing from a previous message or a rejected candidate can appear.
+- **Follow-ups.** The last 6 messages of the current conversation (clipped) are loaded server-side. A message that leans on them ("From which places?", "explain it more") is rewritten into a standalone question by the model; without one (mock provider, or a failed call) the previous question is prepended. A message that is already self-contained is left alone.
+- **Memory.** Relevant turns from the same user's *other* conversations are found by keyword coverage over their most recent 400 messages (always filtered by `chat_sessions.user_id`), at most 3, shown oldest-first with the newest marked "(most recent)" and an instruction that the latest statement wins. The current conversation takes priority because it is passed separately.
+- **Separation.** History and memory are prompt context only: labelled "NOT evidence about college documents", never cited, and never converted into citations. An answer resting only on conversation has `basis = conversation` and no sources or trust indicator. Memory lookups are skipped for document-scoped questions.
+- **Ownership.** Sessions are looked up by `(id, user_id)`; another user's session id is a 404, and memory never crosses users or colleges.
+
+## Question understanding (`app/rag/analysis.py`)
+
+Before retrieval, the resolved question (follow-ups already rewritten, translated to English for retrieval) is turned into a `QuestionPlan`. It is rule-based: no extra model call, no added cost, and it describes the question without ever supplying facts.
+
+| Field | Meaning |
+| --- | --- |
+| `intent` | count, list, factual, temporal, location, definition, explanation, why, task (how-to), comparison, summarization, eligibility, conditional, numerical |
+| `breadth` | `narrow` (one fact: 6 chunks), `enumerate` (count/list: up to 24 chunks, looser relative cutoff, so every matching record reaches the model), `broad` (summary, comparison, "complete/in detail": 12 chunks) |
+| `parts` | several questions in one message, split on `?`, `;` and "and <wh-word>" |
+| `sides` | the two things compared ("Compare A and B", "difference between A and B", "A vs B") |
+| `calculation` | the answer needs arithmetic |
+
+`retrieve_for_plan` follows the plan. A single question gets one search sized by its breadth. A comparison or multi-part message gets one search per side/part, interleaved so none is crowded out; sides/parts with nothing relevant are named in the prompt so the model answers the supported ones and says what is missing. Each search keeps the existing term-coverage and document-level relevance cutoffs, so extra breadth never admits an unrelated document. Command words ("list", "explain") and operation words ("total", "average") are optional search terms when no document contains them; subject words never are.
+
+The prompt carries the intent's answer-style rule plus per-plan lines (compare these on the same attributes, answer each part separately, show the working and never estimate a missing value, use all retrieved records when counting). A message with no content words and no conversation to borrow from ("tell me") gets a short clarifying question back; the model can do the same by replying `CLARIFY: <question>`. Clarifications carry no sources and no trust rating.
+
+Ingestion keeps meaning: spreadsheet and Word-table rows are indexed as self-contained sentences that carry their column headers, sheet/section headings are stored per chunk, and chunk overlap repeats whole trailing sentences (rows), never a fragment.
+
+Source list (frontend): `AnswerBlock` shows up to two sources and a "See more"/"See less" toggle beyond that, with state per answer. It only affects presentation; the source list itself is chosen by the backend. No Sources section and no trust meter render for an unanswered reply.
+
+
+### Exact counts over tables (`app/rag/aggregation.py`)
+
+Spreadsheet and table rows are ingested as one "Header: value; ..." sentence each. For a `count` question the model is not left to count the (capped) retrieved chunks: the best-matching document's chunks are all read, rows are de-duplicated (chunks overlap), and the exact total is put in the prompt ("Exact record count ... N"). Up to 150 rows the full row list is included too, so filtered counts ("routes from Tambaram") are exact; beyond that only the total is given and the model is told a filtered figure can't be confirmed. Documents that are mostly prose are not treated as tables. Limitation: word-for-word identical rows count once.
+
+### Other answer-handling rules
+
+* Calculations over several values ("total of the transport fee and the hostel fee") search each operand separately and use a looser document-level cutoff, so every document holding a figure is retrieved.
+* A multi-part reply where the model marks only some parts `INSUFFICIENT_EVIDENCE` keeps the supported (cited) parts and replaces the marker with "(not found in the available documents)"; only a reply with nothing supported becomes the fallback.
+* A first-person remark ("I take bus route R6") is acknowledged without a search or model call; it stays in the chat history for later questions.
+* Conflict detection compares fee amounts only between fees of the same kind (a transport fee and a hostel fee are not a conflict).

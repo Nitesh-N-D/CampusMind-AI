@@ -35,6 +35,10 @@ async def process_document(db: Session, document: models.Document) -> None:
         _detect_events(document, pages)
 
         raw_chunks = chunk_pages(pages)
+        # Re-processing this document replaces only its own chunks.
+        db.query(models.DocumentChunk).filter(
+            models.DocumentChunk.document_id == document.id
+        ).delete(synchronize_session=False)
         embedder = get_embedding_provider()
 
         for idx, c in enumerate(raw_chunks):

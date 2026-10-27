@@ -35,6 +35,23 @@ def apply_migrations(engine: Engine) -> None:
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE documents ADD COLUMN {name} {ddl}"))
 
+    # Document-scoped chat: one chunk per (document, position). Existing
+    # databases get the same unique index create_all gives new ones. Skipped
+    # (with the app still working) if legacy data already has duplicates.
+    if "document_chunks" in tables:
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_chunks_doc_index "
+                        "ON document_chunks (document_id, chunk_index)"
+                    )
+                )
+        except Exception:  # noqa: BLE001
+            from app.core.logging_config import logger
+
+            logger.warning("Could not add the unique chunk index; duplicate chunks exist")
+
     # Set once per notification when its Web Push is claimed. Rows that already
     # exist are marked as pushed, so turning push on never blasts old notices.
     # (The push_subscriptions table itself is created by create_all.)
@@ -68,7 +85,11 @@ def apply_migrations(engine: Engine) -> None:
 
 
 ADDED_COLUMNS = {
-    "chat_messages": (("feedback_reason", "VARCHAR(30)"),),
+    "chat_messages": (
+        ("feedback_reason", "VARCHAR(30)"),
+        ("answer_status", "VARCHAR(30)"),
+        ("answer_basis", "VARCHAR(20)"),
+    ),
     "search_logs": (
         ("reason", "VARCHAR(30)"),
         ("language", "VARCHAR(10)"),

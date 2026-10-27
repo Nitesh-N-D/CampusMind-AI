@@ -172,6 +172,8 @@ class ChatRequest(BaseModel):
     session_id: Optional[int] = None
     message: str
     language: Optional[str] = Field(default="en", max_length=10)
+    # Restricts retrieval to this one document. Omitted = all documents.
+    document_id: Optional[int] = Field(default=None, ge=1)
 
     @field_validator("message")
     @classmethod
@@ -205,6 +207,10 @@ class ChatResponse(BaseModel):
     retrieval_ms: int
     llm_ms: int
     abstained: bool
+    # answered | insufficient_evidence. Insufficient answers always have no citations.
+    answer_status: Literal["answered", "insufficient_evidence"] = "answered"
+    # documents | conversation (None when insufficient)
+    basis: Optional[Literal["documents", "conversation"]] = None
 
 
 FEEDBACK_REASONS = ("incorrect", "missing", "poor_citation", "outdated", "other")

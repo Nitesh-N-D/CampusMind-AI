@@ -50,6 +50,22 @@ class TopicMatch:
     topic: str
     value: str
     chunk: models.DocumentChunk
+    # What kind of thing the value belongs to ("hostel" in "hostel fee").
+    # Values of different kinds are different facts, not a conflict.
+    qualifier: str = ""
+
+
+_FEE_KIND = re.compile(r"(\w+)\s+fees?\b", re.IGNORECASE)
+_FILLER = {"the", "a", "an", "annual", "total", "yearly", "monthly", "semester", "this", "per", "of", "is", "and"}
+
+
+def _qualifier(topic: str, chunk_text: str, match_start: int) -> str:
+    if topic != "fee_amount":
+        return ""
+    # The word naming the fee, taken from the text just before the amount.
+    window = chunk_text[max(0, match_start - 40) : match_start + 40]
+    kinds = [k.lower() for k in _FEE_KIND.findall(window) if k.lower() not in _FILLER]
+    return kinds[0] if kinds else ""
 
 
 def extract_topic_values(chunk: models.DocumentChunk) -> List[TopicMatch]:
@@ -57,20 +73,27 @@ def extract_topic_values(chunk: models.DocumentChunk) -> List[TopicMatch]:
     for topic, pattern in TOPIC_PATTERNS.items():
         m = pattern.search(chunk.content)
         if m:
-            matches.append(TopicMatch(topic=topic, value=_normalize_value(topic, m.group(1)), chunk=chunk))
+            matches.append(
+                TopicMatch(
+                    topic=topic,
+                    value=_normalize_value(topic, m.group(1)),
+                    chunk=chunk,
+                    qualifier=_qualifier(topic, chunk.content, m.start()),
+                )
+            )
     return matches
 
 
 def detect_conflicts(
     db: Session, college_id: int, chunks: List[models.DocumentChunk]
 ) -> List[models.DocumentConflict]:
-    by_topic: dict[str, List[TopicMatch]] = {}
+    by_topic: dict[tuple, List[TopicMatch]] = {}
     for chunk in chunks:
         for match in extract_topic_values(chunk):
-            by_topic.setdefault(match.topic, []).append(match)
+            by_topic.setdefault((match.topic, match.qualifier), []).append(match)
 
     found: List[models.DocumentConflict] = []
-    for topic, matches in by_topic.items():
+    for (topic, _qualifier_key), matches in by_topic.items():
         distinct_values = {m.value for m in matches}
         if len(distinct_values) < 2:
             continue

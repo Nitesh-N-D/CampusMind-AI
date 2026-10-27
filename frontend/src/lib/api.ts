@@ -345,6 +345,8 @@ export interface ChatResponse {
   retrieval_ms: number;
   llm_ms: number;
   abstained: boolean;
+  answer_status: "answered" | "insufficient_evidence";
+  basis: "documents" | "conversation" | null;
 }
 
 export interface ChatSessionOut {
@@ -360,6 +362,8 @@ export interface ChatMessageOut {
   citations: Citation[];
   confidence: number | null;
   has_conflict: boolean;
+  answer_status?: "answered" | "insufficient_evidence" | null;
+  basis?: "documents" | "conversation" | null;
   created_at: string;
 }
 

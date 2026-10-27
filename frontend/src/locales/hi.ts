@@ -38,6 +38,8 @@ export const hi: Partial<Record<MessageKey, string>> = {
   "chat.disclaimer": "उत्तर अपलोड किए गए आधिकारिक दस्तावेज़ों से लिए गए हैं। समय-सीमा पर कार्रवाई से पहले उद्धृत स्रोत जाँचें।",
   "chat.checking": "आपके कॉलेज के दस्तावेज़ जाँचे जा रहे हैं...",
   "chat.sources": "स्रोत",
+  "chat.seeMore": "और देखें",
+  "chat.seeLess": "कम देखें",
   "chat.confidence": "विश्वसनीयता {value}%",
   "chat.lowConfidence": "कम भरोसा - उद्धृत दस्तावेज़ से पुष्टि करें",
   "chat.copy": "उत्तर कॉपी करें",

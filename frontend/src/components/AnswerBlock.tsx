@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MarkIcon } from "@/components/Brand";
 import { TrustMeter, type TrustLevel } from "@/components/Seal";
 import { SourceRow, Supersession, type DocStatus } from "@/components/campus";
@@ -22,6 +22,15 @@ export interface AnswerConflict {
   reasoning: string;
   /** Which side holds today, when known. */
   current?: "a" | "b";
+}
+
+/** Sources shown before the list is expanded. */
+export const COLLAPSED_SOURCE_COUNT = 2;
+
+/** The sources to render: all of them when there are few or the list is open,
+ *  otherwise only the first COLLAPSED_SOURCE_COUNT. Presentation only. */
+export function visibleSources<T>(sources: T[], expanded: boolean): T[] {
+  return expanded || sources.length <= COLLAPSED_SOURCE_COUNT ? sources : sources.slice(0, COLLAPSED_SOURCE_COUNT);
 }
 
 /** Maps the model's 0-100 confidence onto the four trust tiers. */
@@ -66,6 +75,8 @@ export function AnswerBlock({
   note,
   sourcesLabel = "From these campus documents",
   trustHeading = "Trust",
+  seeMoreLabel = "See more",
+  seeLessLabel = "See less",
   children,
 }: {
   answer: ReactNode;
@@ -77,8 +88,13 @@ export function AnswerBlock({
   note?: string;
   sourcesLabel?: string;
   trustHeading?: string;
+  seeMoreLabel?: string;
+  seeLessLabel?: string;
   children?: ReactNode;
 }) {
+  // Each answer is its own component instance, so expansion is per answer.
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = sources.length > COLLAPSED_SOURCE_COUNT;
   return (
     <article className="thread flex gap-3 animate-rise">
       <span className="thread-node mt-0.5 z-[1] bg-paper-100">
@@ -87,10 +103,13 @@ export function AnswerBlock({
       <div className="min-w-0 flex-1 pb-1">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <p className="label-caps">CampusMind answered</p>
-          <div className="flex items-center gap-2">
-            <span className="label-caps">{trustHeading}</span>
-            <TrustMeter level={trust} score={score ?? undefined} size="sm" showLabel showScore={false} />
-          </div>
+          {/* No evidence-backed answer, no trust rating to show. */}
+          {trust !== "none" && (
+            <div className="flex items-center gap-2">
+              <span className="label-caps">{trustHeading}</span>
+              <TrustMeter level={trust} score={score ?? undefined} size="sm" showLabel showScore={false} />
+            </div>
+          )}
         </div>
 
         <div className="mt-2 text-[15px] sm:text-base text-ink-900 leading-relaxed whitespace-pre-wrap break-words">
@@ -128,10 +147,20 @@ export function AnswerBlock({
               {sourcesLabel} <span className="data">({sources.length})</span>
             </p>
             <ol className="divide-y divide-line">
-              {sources.map((s, i) => (
+              {visibleSources(sources, expanded).map((s, i) => (
                 <SourceRow key={i} index={i + 1} {...s} />
               ))}
             </ol>
+            {collapsible && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="mt-2 text-sm font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900"
+              >
+                {expanded ? seeLessLabel : seeMoreLabel}
+              </button>
+            )}
           </div>
         )}
 

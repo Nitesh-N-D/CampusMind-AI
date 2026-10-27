@@ -152,6 +152,10 @@ class Document(Base):
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
+    # One chunk per position per document: a retried or repeated indexing run
+    # can't duplicate a document's chunks. The leading document_id also serves
+    # the document-filtered retrieval query.
+    __table_args__ = (UniqueConstraint("document_id", "chunk_index", name="uq_document_chunks_doc_index"),)
 
     id = Column(Integer, primary_key=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
@@ -225,6 +229,9 @@ class ChatMessage(Base):
     confidence = Column(Float, nullable=True)
     has_conflict = Column(Boolean, default=False)
     conflict_ids = Column(JSON, default=list)
+    # answered | insufficient_evidence, and what an answer rests on (documents | conversation).
+    answer_status = Column(String(30), nullable=True)
+    answer_basis = Column(String(20), nullable=True)
     retrieval_ms = Column(Integer, nullable=True)
     llm_ms = Column(Integer, nullable=True)
     feedback = Column(String(20), nullable=True)  # up | down | null
